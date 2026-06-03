@@ -136,61 +136,251 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
   </div>;
 }
 
+/* ── LINK RENDERER — auto-detect URLs ── */
+function RenderText({text}){
+  if(!text)return null;
+  const urlRegex=/(https?:\/\/[^\s]+)/g;
+  const parts=text.split(urlRegex);
+  return<span>{parts.map((p,i)=>urlRegex.test(p)
+    ?<a key={i} href={p} target="_blank" rel="noopener noreferrer"
+       style={{color:"#1e40af",textDecoration:"underline",wordBreak:"break-all"}}>{p}</a>
+    :<span key={i}>{p}</span>
+  )}</span>;
+}
+
 /* ── UPDATES TAB ── */
-function UpdatesTab({task,updates,members,currentUser,onAddUpdate}){
+function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssignee,onAddUpdate,onApproveUpdate,onRejectUpdate}){
   const [text,setText]=useState("");
   const [files,setFiles]=useState([]);
+  const [supersedeTarget,setSupersedeTarget]=useState(null); // update being superseded
+  const [suggestMode,setSuggestMode]=useState(false); // non-privileged suggest mode
+  const [expandedRef,setExpandedRef]=useState(null); // which update's ref chain is expanded
   const fileRef=useRef();
-  const taskUpdates=updates.filter(u=>u.taskId===task.id).sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const updateRefs=useRef({}); // refs for scrolling to specific updates
+
+  const canPostDirect=isAdmin||isAssignor||isAssignee;
+  const taskUpdates=updates
+    .filter(u=>u.taskId===task.id)
+    .filter(u=>{
+      // Pending suggestions: only show to author + privileged users
+      if(u.type==="suggestion"&&u.suggestionStatus==="pending"){
+        return u.authorId===currentUser.id||canPostDirect;
+      }
+      return true;
+    })
+    .sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"Unknown"};
   const addFiles=async(fileList)=>{const r=await readFiles(fileList);setFiles(f=>[...f,...r]);};
   const removeFile=(id)=>setFiles(f=>f.filter(x=>x.id!==id));
-  const canPost=text.trim().length>0; // text ALWAYS required
+  const canPost=text.trim().length>0;
+
+  const scrollToUpdate=(id)=>{
+    const el=updateRefs.current[id];
+    if(el)el.scrollIntoView({behavior:"smooth",block:"center"});
+    setExpandedRef(id);
+    setTimeout(()=>setExpandedRef(null),3000);
+  };
+
   const submit=()=>{
-    if(!text.trim()){alert("Please describe what this update or file is about before posting.");return;}
-    onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,text:text.trim(),attachments:files,timestamp:nowISO(),type:"comment"});
-    setText("");setFiles([]);
+    if(!text.trim()){alert("Please describe this update before posting.");return;}
+    const now=nowISO();
+    if(!canPostDirect||suggestMode){
+      // Submit as suggestion pending approval
+      onAddUpdate({
+        id:uid(),taskId:task.id,authorId:currentUser.id,
+        text:text.trim(),attachments:files,timestamp:now,
+        type:"suggestion",suggestionStatus:"pending",
+        supersedesId:supersedeTarget?.id||null,
+        approvedBy:null,approvedAt:null,
+      });
+    } else {
+      // Direct post
+      const newId=uid();
+      onAddUpdate({
+        id:newId,taskId:task.id,authorId:currentUser.id,
+        text:text.trim(),attachments:files,timestamp:now,
+        type:"comment",
+        supersedesId:supersedeTarget?.id||null,
+        supersededById:null,approvedBy:null,approvedAt:null,
+      });
+      // Mark the superseded update
+      if(supersedeTarget){
+        onAddUpdate({
+          ...supersedeTarget,
+          supersededById:newId,
+          supersededAt:now,
+          supersededBy:currentUser.id,
+          _updateExisting:true,
+        });
+      }
+    }
+    setText("");setFiles([]);setSupersedeTarget(null);setSuggestMode(false);
+  };
+
+  const handleApprove=(suggestion)=>{
+    const now=nowISO();
+    const newId=uid();
+    // Post approved update
+    onAddUpdate({
+      id:newId,taskId:task.id,authorId:suggestion.authorId,
+      text:suggestion.text,attachments:suggestion.attachments||[],
+      timestamp:now,type:"comment",
+      supersedesId:suggestion.supersedesId||null,
+      supersededById:null,
+      approvedBy:currentUser.id,approvedAt:now,
+    });
+    // Mark superseded if linked
+    if(suggestion.supersedesId){
+      const orig=taskUpdates.find(u=>u.id===suggestion.supersedesId);
+      if(orig){
+        onAddUpdate({...orig,supersededById:newId,supersededAt:now,supersededBy:suggestion.authorId,_updateExisting:true});
+      }
+    }
+    // Remove suggestion
+    onApproveUpdate(suggestion.id);
+  };
+
+  const handleReject=(suggestion)=>{
+    if(!window.confirm("Reject this suggestion?"))return;
+    onRejectUpdate(suggestion.id);
   };
   return<div>
-    <div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
+    {/* ── UPDATE LIST ── */}
+    <div style={{maxHeight:420,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
       {taskUpdates.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No updates yet.</div>}
-      {taskUpdates.map(u=>{const author=getMember(u.authorId);return<div key={u.id} style={{padding:"12px 14px",background:u.type==="system"?"#f0fdf4":"#f8fafc",borderRadius:9,border:`1px solid ${u.type==="system"?"#bbf7d0":"#e2e8f0"}`}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-          <Avatar name={author.name} size={30} color={author.role==="admin"?"#c9a227":"#0f2557"}/>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#0f2557"}}>{author.name}</div>
-            <div style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</div>
+      {taskUpdates.map(u=>{
+        const author=getMember(u.authorId);
+        const approver=u.approvedBy?getMember(u.approvedBy):null;
+        const supersededByUpdate=u.supersededById?taskUpdates.find(x=>x.id===u.supersededById):null;
+        const supersedes=u.supersedesId?taskUpdates.find(x=>x.id===u.supersedesId):null;
+        const isSuperseded=!!u.supersededById;
+        const isSuggestion=u.type==="suggestion";
+        const isPending=isSuggestion&&u.suggestionStatus==="pending";
+        const isHighlighted=expandedRef===u.id;
+
+        let bgColor="#f8fafc",borderColor="#e2e8f0";
+        if(u.type==="system"){bgColor="#f0fdf4";borderColor="#bbf7d0";}
+        if(isSuperseded){bgColor="#fafafa";borderColor="#e2e8f0";}
+        if(isPending){bgColor="#fffbf5";borderColor="#fbbf24";}
+        if(isHighlighted){bgColor="#eff6ff";borderColor="#3b82f6";}
+
+        return<div key={u.id} ref={el=>updateRefs.current[u.id]=el}
+          style={{padding:"12px 14px",background:bgColor,borderRadius:9,border:`1.5px solid ${borderColor}`,opacity:isSuperseded?0.65:1,transition:"all 0.3s"}}>
+
+          {/* ── SUPERSEDED BANNER ── */}
+          {isSuperseded&&supersededByUpdate&&<div style={{marginBottom:8,padding:"5px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+            <span style={{fontSize:10,fontWeight:700,color:"#92400e"}}>⚠️ UPDATED — refer to newer update</span>
+            <button onClick={()=>scrollToUpdate(supersededByUpdate.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
+              → View Update by {getMember(supersededByUpdate.authorId)?.name} · {fmtDT(supersededByUpdate.timestamp)}
+            </button>
+          </div>}
+
+          {/* ── SUPERSEDES REFERENCE ── */}
+          {supersedes&&<div style={{marginBottom:8,padding:"5px 10px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bfdbfe",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+            <span style={{fontSize:10,color:"#1e40af",fontWeight:700}}>↩️ Supersedes earlier update:</span>
+            <button onClick={()=>scrollToUpdate(supersedes.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
+              → {getMember(supersedes.authorId)?.name} · {fmtDT(supersedes.timestamp)}
+            </button>
+          </div>}
+
+          {/* ── PENDING SUGGESTION BANNER ── */}
+          {isPending&&<div style={{marginBottom:8,padding:"6px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#92400e",marginBottom:canPostDirect?6:0}}>
+              ⏳ Suggested Update — Pending Approval
+              {u.authorId===currentUser.id&&" (your suggestion)"}
+            </div>
+            {canPostDirect&&<div style={{display:"flex",gap:6}}>
+              <button onClick={()=>handleApprove(u)} style={{padding:"4px 12px",borderRadius:5,border:"none",background:"#166534",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ Approve & Post</button>
+              <button onClick={()=>handleReject(u)} style={{padding:"4px 10px",borderRadius:5,border:"1px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>❌ Reject</button>
+            </div>}
+          </div>}
+
+          {/* ── APPROVED BY BANNER ── */}
+          {u.approvedBy&&approver&&<div style={{marginBottom:8,padding:"4px 10px",background:"#f0fdf4",borderRadius:6,border:"1px solid #bbf7d0"}}>
+            <span style={{fontSize:10,color:"#166534",fontWeight:700}}>✅ Approved by {approver.name} · {fmtDT(u.approvedAt)}</span>
+          </div>}
+
+          {/* ── HEADER ── */}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+            <Avatar name={author.name} size={30} color={author.role==="admin"?"#c9a227":"#0f2557"}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#0f2557"}}>
+                {author.name}
+                {u.approvedBy&&approver&&<span style={{fontSize:10,fontWeight:400,color:"#64748b",marginLeft:6}}>written by · approved by {approver.name}</span>}
+              </div>
+              <div style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</div>
+            </div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              {u.type==="system"&&<Badge text="System" color="#166534" bg="#dcfce7" small/>}
+              {isSuperseded&&<Badge text="Outdated" color="#92400e" bg="#fef3c7" small/>}
+              {isPending&&<Badge text="Pending" color="#92400e" bg="#fef3c7" small/>}
+            </div>
           </div>
-          {u.type==="system"&&<Badge text="System" color="#166534" bg="#dcfce7" small/>}
-        </div>
-        {u.text&&<div style={{fontSize:13,color:"#374151",lineHeight:1.6,paddingLeft:38,marginBottom:u.attachments&&u.attachments.length?8:0}}>{u.text}</div>}
-        {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}>
-          {u.attachments.map(f=>{
-            const isImg=f.type&&f.type.startsWith("image/");
-            return<div key={f.id} style={{marginBottom:6}}>
-              {isImg
-                ?<div style={{position:"relative",borderRadius:7,overflow:"hidden",border:"1px solid #e2e8f0",maxWidth:320}}>
-                  <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
-                  <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                    <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
-                    <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+
+          {/* ── TEXT with clickable links ── */}
+          {u.text&&<div style={{fontSize:13,color:isSuperseded?"#94a3b8":"#374151",lineHeight:1.6,paddingLeft:38,marginBottom:8,textDecoration:isSuperseded?"none":"none"}}>
+            <RenderText text={u.text}/>
+          </div>}
+
+          {/* ── ATTACHMENTS ── */}
+          {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}>
+            {u.attachments.map(f=>{
+              const isImg=f.type&&f.type.startsWith("image/");
+              return<div key={f.id} style={{marginBottom:6}}>
+                {isImg
+                  ?<div style={{position:"relative",borderRadius:7,overflow:"hidden",border:"1px solid #e2e8f0",maxWidth:320}}>
+                    <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                      <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+                    </div>
                   </div>
-                </div>
-                :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 11px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
-                  <span style={{fontSize:15}}>{FILE_ICON(f.type)}</span>
-                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{f.name}</span>
-                  <span style={{color:"#94a3b8",fontSize:10,flexShrink:0}}>({fmtBytes(f.size)})</span>
-                  <span style={{color:"#1e40af",fontSize:10,flexShrink:0}}>⬇</span>
-                </a>}
-            </div>;
-          })}
-        </div>}
-        <div style={{fontSize:10,color:"#94a3b8",marginTop:6,paddingLeft:38,fontStyle:"italic"}}>🔒 This record cannot be edited</div>
-      </div>;})}
+                  :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 11px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
+                    <span style={{fontSize:15}}>{FILE_ICON(f.type)}</span>
+                    <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{f.name}</span>
+                    <span style={{color:"#94a3b8",fontSize:10,flexShrink:0}}>({fmtBytes(f.size)})</span>
+                    <span style={{color:"#1e40af",fontSize:10,flexShrink:0}}>⬇</span>
+                  </a>}
+              </div>;
+            })}
+          </div>}
+
+          {/* ── FOOTER: supersede button + lock ── */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,paddingLeft:38}}>
+            <div style={{fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>🔒 This record cannot be edited</div>
+            {!isSuperseded&&!isPending&&u.type!=="system"&&canPostDirect&&<button
+              onClick={()=>{setSupersedeTarget(u);setSuggestMode(false);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
+              style={{fontSize:10,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
+              ↩️ Supersede This
+            </button>}
+            {!isSuperseded&&!isPending&&u.type!=="system"&&!canPostDirect&&<button
+              onClick={()=>{setSupersedeTarget(u);setSuggestMode(true);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
+              style={{fontSize:10,color:"#8b5cf6",fontWeight:700,background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
+              💡 Suggest Update
+            </button>}
+          </div>
+        </div>;
+      })}
     </div>
-    {/* Staged files preview */}
+
+    {/* ── SUPERSEDE TARGET INDICATOR ── */}
+    {supersedeTarget&&<div style={{background:"#fff7ed",border:"1.5px solid #f97316",borderRadius:8,padding:"8px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+        <div style={{fontSize:11,fontWeight:700,color:"#f97316"}}>↩️ {suggestMode?"Suggesting update to supersede:":"Superseding update from:"} {getMember(supersedeTarget.authorId)?.name} · {fmtDT(supersedeTarget.timestamp)}</div>
+        <div style={{fontSize:11,color:"#92400e",marginTop:2,fontStyle:"italic"}}>"{supersedeTarget.text?.slice(0,60)}{supersedeTarget.text?.length>60?"…":""}"</div>
+      </div>
+      <button onClick={()=>{setSupersedeTarget(null);setSuggestMode(false);}} style={{background:"none",border:"none",color:"#f97316",fontSize:16,cursor:"pointer",flexShrink:0}}>✕</button>
+    </div>}
+
+    {/* ── SUGGEST MODE HEADER ── */}
+    {!canPostDirect&&!suggestMode&&!supersedeTarget&&<div style={{background:"#f5f3ff",border:"1px solid #c4b5fd",borderRadius:7,padding:"7px 12px",marginBottom:8,fontSize:11,color:"#7c3aed"}}>
+      💡 You can suggest an update — it will be reviewed by Admin/Assignor/Assignee before posting.
+    </div>}
+
+    {/* ── STAGED FILES ── */}
     {files.length>0&&<div style={{background:"#f0f9ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#1e40af",marginBottom:6}}>📎 Files staged — add a description below before posting:</div>
+      <div style={{fontSize:11,fontWeight:700,color:"#1e40af",marginBottom:6}}>📎 Files staged — add a description below:</div>
       {files.map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #dbeafe"}}>
         <span style={{fontSize:14}}>{FILE_ICON(f.type)}</span>
         <span style={{fontSize:12,color:"#1e293b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
@@ -198,23 +388,35 @@ function UpdatesTab({task,updates,members,currentUser,onAddUpdate}){
         <button onClick={()=>removeFile(f.id)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:14,padding:"0 4px"}}>✕</button>
       </div>)}
     </div>}
-    <div style={{border:"1.5px solid #e2e8f0",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-      <textarea value={text} onChange={e=>setText(e.target.value)}
-        placeholder={files.length>0
-          ?"⚠️ Required: Describe what these files are for (e.g. 'Revised structural drawing from consultant')…"
-          :"Add an update, note or status change… Attach files using the button below. (Cannot be edited after posting)"}
-        style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:72,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:files.length>0&&!text.trim()?"#fffbf5":"#f8fafc",outline:"none"}}/>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0"}}>
+
+    {/* ── INPUT BOX ── */}
+    <div style={{border:`1.5px solid ${suggestMode?"#c4b5fd":"#e2e8f0"}`,borderRadius:9,overflow:"hidden",background:"#fff"}}>
+      <textarea id="update-textarea" value={text} onChange={e=>setText(e.target.value)}
+        placeholder={
+          suggestMode?"💡 Write your suggested update — it will be sent for approval before posting…"
+          :supersedeTarget?"↩️ Write the updated information that supersedes the above…"
+          :!canPostDirect?"💡 Write your suggested update — it will be sent for approval…"
+          :"Add an update, note or status change… (Cannot be edited after posting)"}
+        style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:80,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:suggestMode?"#faf5ff":files.length>0&&!text.trim()?"#fffbf5":"#f8fafc",outline:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0",flexWrap:"wrap",gap:6}}>
         <button onClick={()=>fileRef.current?.click()} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>
           📎 Attach File
         </button>
         <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
-        <button onClick={submit} disabled={!canPost} style={{padding:"7px 20px",borderRadius:6,border:"none",background:canPost?"#0f2557":"#e2e8f0",color:canPost?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:canPost?"pointer":"default"}}>
-          📌 Post Update (Permanent)
-        </button>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {(suggestMode||!canPostDirect)&&<button onClick={()=>{setSuggestMode(false);setSupersedeTarget(null);}} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Cancel</button>}
+          <button onClick={submit} disabled={!canPost} style={{padding:"7px 20px",borderRadius:6,border:"none",
+            background:!canPost?"#e2e8f0":(suggestMode||!canPostDirect)?"#7c3aed":"#0f2557",
+            color:canPost?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:canPost?"pointer":"default"}}>
+            {(suggestMode||!canPostDirect)?"💡 Submit for Approval":"📌 Post Update (Permanent)"}
+          </button>
+        </div>
       </div>
     </div>
-    <div style={{fontSize:10,color:"#94a3b8",marginTop:6,textAlign:"center"}}>Files must always have a description — this keeps the audit trail meaningful.</div>
+    <div style={{fontSize:10,color:"#94a3b8",marginTop:6,textAlign:"center"}}>
+      {canPostDirect?"Files must always have a description — this keeps the audit trail meaningful."
+      :"Your suggestion will only be visible to you and approvers until approved."}
+    </div>
   </div>;
 }
 
@@ -344,7 +546,7 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
 }
 
 /* ── TASK DETAIL MODAL ── */
-function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask}){
+function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate}){
   const [tab,setTab]=useState("info");
   const [editingDueDate,setEditingDueDate]=useState(false);
   const [newDueDate,setNewDueDate]=useState(task.dueDate||"");
@@ -524,21 +726,63 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
           <div style={{marginTop:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>To add files, go to the Updates tab and attach with a description.</div>
         </div>;
       })()}
-      {linked.length>0&&<div style={{marginTop:12}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>Depends On</div>
-        {linked.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#f8fafc",borderRadius:6,marginBottom:5,border:"1px solid #e2e8f0"}}>
-          <span style={{width:7,height:7,borderRadius:"50%",background:STATUS_META[t.status]?.dot||"#94a3b8",flexShrink:0}}/><span style={{fontSize:11,color:"#0f2557",fontWeight:600}}>{t.ref}</span>
-          <span style={{fontSize:11,color:"#475569",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.task}</span><Badge text={t.status} color={STATUS_META[t.status]?.color} bg={STATUS_META[t.status]?.bg} small/>
-        </div>)}
+      {linked.length>0&&<div style={{marginTop:12}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>
+          Depends On <span style={{fontSize:9,color:"#94a3b8",fontWeight:400,textTransform:"none"}}>(tap to open)</span>
+        </div>
+        {linked.map(lt=>{
+          const isBlocked=lt.status!=="Completed"&&lt.status!=="On Hold";
+          return<div key={lt.id}
+            onClick={()=>{onClose();setTimeout(()=>onOpenLinked(lt.id),80);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:isBlocked?"#fff7ed":"#f0fdf4",borderRadius:8,marginBottom:6,border:`1.5px solid ${isBlocked?"#fed7aa":"#bbf7d0"}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.1)";e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_META[lt.status]?.dot||"#94a3b8",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:"#0f2557",fontWeight:800}}>{lt.ref}</span>
+                <Badge text={lt.status} color={STATUS_META[lt.status]?.color} bg={STATUS_META[lt.status]?.bg} small/>
+              </div>
+              <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{lt.task}</div>
+            </div>
+            {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+              <span style={{fontSize:9,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:4,padding:"1px 5px"}}>⚠ Blocking</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to nudge →</span>
+            </div>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
+          </div>;
+        })}
       </div>}
-      {dependants.length>0&&<div style={{marginTop:10}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>Blocking</div>
-        {dependants.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#fff7ed",borderRadius:6,marginBottom:5,border:"1px solid #fed7aa"}}>
-          <span style={{width:7,height:7,borderRadius:"50%",background:STATUS_META[t.status]?.dot||"#94a3b8",flexShrink:0}}/><span style={{fontSize:11,color:"#0f2557",fontWeight:600}}>{t.ref}</span>
-          <span style={{fontSize:11,color:"#475569",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.task}</span><Badge text={t.status} color={STATUS_META[t.status]?.color} bg={STATUS_META[t.status]?.bg} small/>
-        </div>)}
+      {dependants.length>0&&<div style={{marginTop:10}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>
+          Blocking <span style={{fontSize:9,color:"#94a3b8",fontWeight:400,textTransform:"none"}}>(tap to open)</span>
+        </div>
+        {dependants.map(dt=>{
+          const isBlocked=dt.status!=="Completed"&&dt.status!=="On Hold";
+          return<div key={dt.id}
+            onClick={()=>{onClose();setTimeout(()=>onOpenLinked(dt.id),80);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:isBlocked?"#fff5f5":"#f0fdf4",borderRadius:8,marginBottom:6,border:`1.5px solid ${isBlocked?"#fecaca":"#bbf7d0"}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.1)";e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_META[dt.status]?.dot||"#94a3b8",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:"#0f2557",fontWeight:800}}>{dt.ref}</span>
+                <Badge text={dt.status} color={STATUS_META[dt.status]?.color} bg={STATUS_META[dt.status]?.bg} small/>
+              </div>
+              <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{dt.task}</div>
+            </div>
+            {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+              <span style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff5f5",border:"1px solid #fecaca",borderRadius:4,padding:"1px 5px"}}>🔴 Not Done</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to check →</span>
+            </div>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
+          </div>;
+        })}
       </div>}
       <DeleteSection task={task} currentUser={currentUser} isAdmin={isAdmin} deleteRequests={deleteRequests} onDeleteAdmin={onDeleteAdmin} onRequestDelete={onRequestDelete}/>
     </div>}
-    {tab==="updates"&&<UpdatesTab task={task} updates={updates} members={members} currentUser={currentUser} onAddUpdate={onAddUpdate}/>}
+    {tab==="updates"&&<UpdatesTab task={task} updates={updates} members={members} currentUser={currentUser} isAdmin={isAdmin} isAssignor={isAssignor} isAssignee={isAssignee} onAddUpdate={onAddUpdate} onApproveUpdate={onApproveUpdate} onRejectUpdate={onRejectUpdate}/>}
     {tab==="messages"&&<MessagesTab task={task} messages={messages} members={members} currentUser={currentUser} onSendMessage={onSendMessage}/>}
 
   </div>;
@@ -1302,7 +1546,21 @@ function App(){
     await db.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:currentUserId}).eq("id",id);
     setModal(null);setSelected(null);
   };
-  const addUpdate=async(u)=>{await db.from("task_updates").insert(toUpdate(u));};
+  const addUpdate=async(u)=>{
+    if(u._updateExisting){
+      // Update existing record (for supersede marking)
+      const {_updateExisting,...row}=u;
+      await db.from("task_updates").update(toUpdate(row)).eq("id",row.id);
+    } else {
+      await db.from("task_updates").insert(toUpdate(u));
+    }
+  };
+  const approveUpdate=async(suggestionId)=>{
+    await db.from("task_updates").delete().eq("id",suggestionId);
+  };
+  const rejectUpdate=async(suggestionId)=>{
+    await db.from("task_updates").delete().eq("id",suggestionId);
+  };
   const sendMessage=async(m)=>{await db.from("task_messages").insert(toMsg(m));};
   const updateAttachments=async(taskId,attachments)=>{
     await db.from("tasks").update({attachments}).eq("id",taskId);
@@ -1655,6 +1913,9 @@ function App(){
         onAddUpdate={addUpdate} onSendMessage={sendMessage}
         onAttachmentChange={(a)=>updateAttachments(selected.id,a)}
         onSaveTask={saveTask}
+        onOpenLinked={(taskId)=>{setModal(null);setSelected(null);setTimeout(()=>openTask(taskId,"info"),100);}}
+        onApproveUpdate={approveUpdate}
+        onRejectUpdate={rejectUpdate}
       />
     </Modal>}
 
