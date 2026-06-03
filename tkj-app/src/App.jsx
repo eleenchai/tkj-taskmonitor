@@ -1169,7 +1169,7 @@ function App() {
     if(pr.data)setProjects(pr.data.map(fromProject));
     if(tr.data)setTasks(tr.data.map(fromTask));
     if(ur.data)setUpdates(ur.data.map(fromUpdate));
-    if(msgr.data)setMessages(msgr.data.map(fromMessage));
+    if(msgr.data)setMessages(msgr.data.map(fromMsg));
     if(drr.data)setDeleteRequests(drr.data.map(fromDR));
     setLoaded(true);
   },[]);
@@ -1242,7 +1242,7 @@ function App() {
     setModal(null);setSelected(null);
   };
   const addUpdate=async(u)=>{await db.from("task_updates").insert(toUpdate(u));};
-  const sendMessage=async(m)=>{await db.from("task_messages").insert(toMessage(m));};
+  const sendMessage=async(m)=>{await db.from("task_messages").insert(toMsg(m));};
   const updateAttachments=async(taskId,attachments)=>{
     await db.from("tasks").update({attachments}).eq("id",taskId);
     setTasks(p=>p.map(t=>t.id===taskId?{...t,attachments}:t));
