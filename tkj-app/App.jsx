@@ -1390,34 +1390,80 @@ function App(){
   },[messages,updates,tasks,currentUserId,notifSeen]);
 
   // ── FLOATING TOAST TRIGGER ──
+  // Uses raw messages+updates (NOT filtered by notifSeen) so toasts fire
+  // even after bell has been opened. Tracks by id to avoid duplicates.
+  // On first load: pre-populate prevNotifIds so we don't toast old history.
+  const isFirstLoad=useRef(true);
+
   useEffect(()=>{
     if(!currentUserId||!loaded)return;
-    const newItems=notifications.filter(n=>!prevNotifIds.current.has(n.id));
+    const myTaskIds=new Set(
+      tasks.filter(t=>t.assigneeId===currentUserId||t.assignorId===currentUserId||(t.cc||[]).includes(currentUserId)).map(t=>t.id)
+    );
+    const allRelevant=[
+      ...messages.filter(m=>m.taskId&&myTaskIds.has(m.taskId)&&m.authorId!==currentUserId).map(m=>({...m,type:"message"})),
+      ...updates.filter(u=>u.taskId&&myTaskIds.has(u.taskId)&&u.authorId!==currentUserId&&u.type!=="system").map(u=>({...u,type:"update"})),
+    ];
+
+    if(isFirstLoad.current){
+      // Pre-populate on first load — don't toast existing items
+      allRelevant.forEach(n=>prevNotifIds.current.add(n.id));
+      isFirstLoad.current=false;
+      return;
+    }
+
+    // Only process truly new items
+    const newItems=allRelevant.filter(n=>!prevNotifIds.current.has(n.id));
     if(newItems.length===0)return;
+
     newItems.forEach(n=>{
       prevNotifIds.current.add(n.id);
       const author=members.find(m=>m.id===n.authorId);
       const task=enriched.find(t=>t.id===n.taskId);
       const toastId=uid();
-      setToasts(prev=>[...prev,{id:toastId,taskId:n.taskId,authorName:author?.name||"Someone",taskRef:task?.ref||"",taskName:task?.task||"",type:n.type,urgent:n.urgent,text:n.text||"",timestamp:n.timestamp}]);
-      // Auto-dismiss after 8s (urgent stays 15s)
+      setToasts(prev=>[...prev,{
+        id:toastId,taskId:n.taskId,
+        authorName:author?.name||"Someone",
+        taskRef:task?.ref||"",
+        taskName:task?.task||"",
+        type:n.type,urgent:n.urgent||false,
+        text:n.text||"",
+        timestamp:n.timestamp
+      }]);
       setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==toastId)),n.urgent?15000:8000);
-      // Sound
+
+      // Sound — use a short delay so browser allows it after realtime event
       if(!muted){
-        try{
-          const ctx=new (window.AudioContext||window.webkitAudioContext)();
-          const o=ctx.createOscillator();const g=ctx.createGain();
-          o.connect(g);g.connect(ctx.destination);
-          o.type="sine";
-          if(n.urgent){o.frequency.setValueAtTime(880,ctx.currentTime);o.frequency.setValueAtTime(660,ctx.currentTime+0.15);}
-          else{o.frequency.setValueAtTime(660,ctx.currentTime);o.frequency.setValueAtTime(880,ctx.currentTime+0.1);}
-          g.gain.setValueAtTime(0.3,ctx.currentTime);
-          g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
-          o.start(ctx.currentTime);o.stop(ctx.currentTime+0.4);
-        }catch(e){}
+        setTimeout(()=>{
+          try{
+            const ctx=new (window.AudioContext||window.webkitAudioContext)();
+            const playNote=(freq,start,dur)=>{
+              const o=ctx.createOscillator();
+              const g=ctx.createGain();
+              o.connect(g);g.connect(ctx.destination);
+              o.type="sine";
+              o.frequency.value=freq;
+              g.gain.setValueAtTime(0,start);
+              g.gain.linearRampToValueAtTime(0.25,start+0.02);
+              g.gain.exponentialRampToValueAtTime(0.001,start+dur);
+              o.start(start);o.stop(start+dur);
+            };
+            const t=ctx.currentTime;
+            if(n.urgent){
+              // Urgent: three sharp beeps
+              playNote(880,t,0.12);
+              playNote(880,t+0.15,0.12);
+              playNote(1100,t+0.30,0.2);
+            } else {
+              // Normal: gentle two-tone chime
+              playNote(660,t,0.2);
+              playNote(880,t+0.18,0.25);
+            }
+          }catch(e){}
+        },100);
       }
     });
-  },[notifications,currentUserId,loaded]);
+  },[messages,updates,tasks,currentUserId,loaded,muted]);
 
   const urgentNotifs=notifications.filter(n=>n.urgent).length;
   const pendingDeleteNotifs=isAdmin?deleteRequests.filter(r=>r.status==="pending").length:0;
