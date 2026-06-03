@@ -986,8 +986,8 @@ function ConfigScreen({onConnected}) {
     if(!url.trim()||!key.trim()){setErr("Please enter both values.");return;}
     setLoading(true);setErr("");
     try{
-      initDB(url.trim(),key.trim());
-      const {error}=await getDB().from("members").select("id").limit(1);
+      const {createClient}=await import('@supabase/supabase-js');const testDb=createClient(url.trim(),key.trim());
+      const {error}=await testDb.from("members").select("id").limit(1);
       if(error)throw new Error(error.message);
       LS.set("sb_url",url.trim());LS.set("sb_key",key.trim());
       onConnected();
@@ -1234,16 +1234,16 @@ function App() {
   const deleteTask=async(id)=>{
     if(!isAdmin){alert("Only Admin can delete.");return;}
     if(!confirm("Permanently delete this task?"))return;
-    await getDB().from("task_updates").insert(toUpdate({id:uid(),taskId:id,authorId:currentUserId,
+    await testDb.from("task_updates").insert(toUpdate({id:uid(),taskId:id,authorId:currentUserId,
       text:`Task deleted by Admin (${currentUser?.name}) on ${fmtDT(nowISO())}.`,
       attachments:[],timestamp:nowISO(),type:"system"}));
-    await getDB().from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:currentUserId}).eq("id",id);
+    await testDb.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:currentUserId}).eq("id",id);
     setModal(null);setSelected(null);
   };
-  const addUpdate=async(u)=>{await getDB().from("task_updates").insert(toUpdate(u));};
-  const sendMessage=async(m)=>{await getDB().from("task_messages").insert(toMessage(m));};
+  const addUpdate=async(u)=>{await testDb.from("task_updates").insert(toUpdate(u));};
+  const sendMessage=async(m)=>{await testDb.from("task_messages").insert(toMessage(m));};
   const updateAttachments=async(taskId,attachments)=>{
-    await getDB().from("tasks").update({attachments}).eq("id",taskId);
+    await testDb.from("tasks").update({attachments}).eq("id",taskId);
     setTasks(p=>p.map(t=>t.id===taskId?{...t,attachments}:t));
     setSelected(prev=>prev?.id===taskId?{...prev,attachments}:prev);
   };
@@ -1251,7 +1251,7 @@ function App() {
     const existing=deleteRequests.find(r=>r.taskId===taskId&&r.status==="pending");
     if(existing){alert("A delete request is already pending.");return;}
     const req={id:uid(),taskId,requestedBy:currentUserId,reason,timestamp:nowISO(),status:"pending",reviewedBy:null,reviewedAt:null,reviewNote:""};
-    await getDB().from("delete_requests").insert(toDR(req));
+    await testDb.from("delete_requests").insert(toDR(req));
     await addUpdate({id:uid(),taskId,authorId:currentUserId,
       text:`Delete request by ${currentUser?.name}. Reason: "${reason}". Awaiting Admin approval.`,
       attachments:[],timestamp:nowISO(),type:"system"});
@@ -1259,9 +1259,9 @@ function App() {
   const reviewDeleteRequest=async(reqId,approved,reviewNote)=>{
     const req=deleteRequests.find(r=>r.id===reqId);if(!req)return;
     const requester=members.find(m=>m.id===req.requestedBy);
-    await getDB().from("delete_requests").update({status:approved?"approved":"rejected",reviewed_by:currentUserId,reviewed_at:nowISO(),review_note:reviewNote}).eq("id",reqId);
+    await testDb.from("delete_requests").update({status:approved?"approved":"rejected",reviewed_by:currentUserId,reviewed_at:nowISO(),review_note:reviewNote}).eq("id",reqId);
     if(approved){
-      await getDB().from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:req.requestedBy,deleted_approved_by:currentUserId}).eq("id",req.taskId);
+      await testDb.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:req.requestedBy,deleted_approved_by:currentUserId}).eq("id",req.taskId);
       await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,
         text:`ﻗ─ DELETE APPROVED by Admin (${currentUser?.name}). Requested by ${requester?.name||"ﻗ°½"}. Reason: "${req.reason}". Note: "${reviewNote||"None"}".`,
         attachments:[],timestamp:nowISO(),type:"system"});
@@ -1283,11 +1283,11 @@ function App() {
     else{await db.from("projects").insert({...toProject(p),id:p.id});}
   };
   const setMemberPassword=async(memberId,hash)=>{
-    await getDB().from("members").update({password_hash:hash}).eq("id",memberId);
+    await testDb.from("members").update({password_hash:hash}).eq("id",memberId);
   };
   const saveMood=async(memberId,moodId)=>{
     const todayStr=new Date().toISOString().split("T")[0];
-    await getDB().from("moods").upsert({member_id:memberId,mood_date:todayStr,mood_id:moodId},{onConflict:"member_id,mood_date"});
+    await testDb.from("moods").upsert({member_id:memberId,mood_date:todayStr,mood_id:moodId},{onConflict:"member_id,mood_date"});
     setMoods(p=>({...p,[`${todayStr}_${memberId}`]:moodId}));
   };
   const markNotifsRead=()=>{
