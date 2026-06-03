@@ -1,10 +1,31 @@
 import { createClient } from '@supabase/supabase-js'
-
-const url = import.meta.env.VITE_SUPABASE_URL
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-export const db = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder-key')
-
+ 
+// ── LAZY DB INITIALIZATION ──────────────────────────────────────────────────
+// Don't create at module load time - create only when needed
+let _db = null
+ 
+export function getDb() {
+  if (!_db) {
+    const url = import.meta.env.VITE_SUPABASE_URL
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY
+    try {
+      _db = createClient(url, key)
+    } catch(e) {
+      console.error('Supabase init error:', e)
+    }
+  }
+  return _db
+}
+ 
+// Also export db as a proxy object that lazily initializes
+export const db = new Proxy({}, {
+  get(target, prop) {
+    const client = getDb()
+    if (!client) throw new Error('Database not initialized')
+    return client[prop]
+  }
+})
+ 
 // ── MAPPERS ──────────────────────────────────────────────────────────────────
 export const fromMember = r => ({id:r.id,name:r.name,role:r.role,email:r.email||'',active:r.active,passwordHash:r.password_hash||''})
 export const toMember   = m => ({name:m.name,role:m.role,email:m.email||'',active:m.active,password_hash:m.passwordHash||''})
@@ -23,7 +44,7 @@ export const fromTask   = r => ({
   deletedApprovedBy:r.deleted_approved_by,
   createdAt:r.created_at,createdBy:r.created_by,
 })
-export const toTask     = t => ({
+export const toTask = t => ({
   id:t.id,ref:t.ref,project_id:t.projectId||null,task:t.task,
   prepared_date:t.preparedDate||null,due_date:t.dueDate||null,
   due_time:t.dueTime||'18:00',completed_date:t.completedDate||null,
