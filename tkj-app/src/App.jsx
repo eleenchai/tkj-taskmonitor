@@ -1154,7 +1154,7 @@ function App() {
 
   /* Load all data */
   const loadAll=useCallback(async()=>{
-    const db=getDB();if(!db)return;
+    const db=db;if(!db)return;
     const [mr,pr,tr,ur,msgr,drr]=await Promise.all([
       db.from("members").select("*"),
       db.from("projects").select("*"),
@@ -1173,7 +1173,7 @@ function App() {
   },[]);
 
   const loadMoods=useCallback(async()=>{
-    const db=getDB();if(!db)return;
+    const db=db;if(!db)return;
     const todayStr=new Date().toISOString().split("T")[0];
     const {data}=await db.from("moods").select("*").eq("mood_date",todayStr);
     if(data){
@@ -1188,7 +1188,7 @@ function App() {
   /* Realtime subscriptions */
   useEffect(()=>{
     if(!dbReady)return;
-    const db=getDB();
+    const db=db;
     const ch=db.channel("tkj-rt")
       .on("postgres_changes",{event:"*",schema:"public",table:"tasks"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"task_updates"},()=>loadAll())
@@ -1220,7 +1220,7 @@ function App() {
 
   /* Data mutations */
   const saveTask=async(t)=>{
-    const db=getDB();const row=toTask(t);
+    const db=db;const row=toTask(t);
     if(tasks.find(x=>x.id===t.id)){await db.from("tasks").update(row).eq("id",t.id);}
     else{
       await db.from("tasks").insert(row);
@@ -1273,12 +1273,12 @@ function App() {
     if(approved){setModal(null);setSelected(null);}
   };
   const updateMember=async(m)=>{
-    const db=getDB();const row=toMember(m);
+    const db=db;const row=toMember(m);
     if(members.find(x=>x.id===m.id)){await db.from("members").update(row).eq("id",m.id);}
     else{await db.from("members").insert({...row,id:m.id});}
   };
   const updateProject=async(p)=>{
-    const db=getDB();
+    const db=db;
     if(projects.find(x=>x.id===p.id)){await db.from("projects").update(toProject(p)).eq("id",p.id);}
     else{await db.from("projects").insert({...toProject(p),id:p.id});}
   };
