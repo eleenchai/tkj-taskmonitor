@@ -1,9 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
- 
+
 // ── LAZY DB INITIALIZATION ──────────────────────────────────────────────────
-// Don't create at module load time - create only when needed
 let _db = null
- 
+
 export function getDb() {
   if (!_db) {
     const url = import.meta.env.VITE_SUPABASE_URL
@@ -16,8 +15,7 @@ export function getDb() {
   }
   return _db
 }
- 
-// Also export db as a proxy object that lazily initializes
+
 export const db = new Proxy({}, {
   get(target, prop) {
     const client = getDb()
@@ -25,7 +23,7 @@ export const db = new Proxy({}, {
     return client[prop]
   }
 })
- 
+
 // ── MAPPERS ──────────────────────────────────────────────────────────────────
 export const fromMember = r => ({id:r.id,name:r.name,role:r.role,email:r.email||'',active:r.active,passwordHash:r.password_hash||''})
 export const toMember   = m => ({name:m.name,role:m.role,email:m.email||'',active:m.active,password_hash:m.passwordHash||''})
@@ -57,8 +55,37 @@ export const toTask = t => ({
   deleted_approved_by:t.deletedApprovedBy||null,
   created_at:t.createdAt,created_by:t.createdBy||null,
 })
-export const fromUpdate = r => ({id:r.id,taskId:r.task_id,authorId:r.author_id,text:r.text||'',attachments:r.attachments||[],timestamp:r.timestamp,type:r.type||'comment'})
-export const toUpdate   = u => ({id:u.id,task_id:u.taskId,author_id:u.authorId,text:u.text||'',attachments:u.attachments||[],timestamp:u.timestamp,type:u.type||'comment'})
+
+// ── UPDATE MAPPER — now includes supersede chain + suggestion fields ──
+export const fromUpdate = r => ({
+  id:r.id,taskId:r.task_id,authorId:r.author_id,
+  text:r.text||'',attachments:r.attachments||[],
+  timestamp:r.timestamp,type:r.type||'comment',
+  // Supersede chain
+  supersedesId:r.supersedes_id||null,
+  supersededById:r.superseded_by_id||null,
+  supersededAt:r.superseded_at||null,
+  supersededBy:r.superseded_by||null,
+  // Suggestion approval
+  suggestionStatus:r.suggestion_status||null,
+  approvedBy:r.approved_by||null,
+  approvedAt:r.approved_at||null,
+})
+export const toUpdate = u => ({
+  id:u.id,task_id:u.taskId,author_id:u.authorId,
+  text:u.text||'',attachments:u.attachments||[],
+  timestamp:u.timestamp,type:u.type||'comment',
+  // Supersede chain
+  supersedes_id:u.supersedesId||null,
+  superseded_by_id:u.supersededById||null,
+  superseded_at:u.supersededAt||null,
+  superseded_by:u.supersededBy||null,
+  // Suggestion approval
+  suggestion_status:u.suggestionStatus||null,
+  approved_by:u.approvedBy||null,
+  approved_at:u.approvedAt||null,
+})
+
 export const fromMsg    = r => ({id:r.id,taskId:r.task_id,authorId:r.author_id,text:r.text||'',attachments:r.attachments||[],timestamp:r.timestamp,urgent:r.urgent||false,mentions:r.mentions||[]})
 export const toMsg      = m => ({id:m.id,task_id:m.taskId,author_id:m.authorId,text:m.text||'',attachments:m.attachments||[],timestamp:m.timestamp,urgent:m.urgent||false,mentions:m.mentions||[]})
 export const fromDR     = r => ({id:r.id,taskId:r.task_id,requestedBy:r.requested_by,reason:r.reason||'',timestamp:r.timestamp,status:r.status,reviewedBy:r.reviewed_by,reviewedAt:r.reviewed_at,reviewNote:r.review_note||''})

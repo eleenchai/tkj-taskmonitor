@@ -136,48 +136,295 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
   </div>;
 }
 
+/* ── LINK RENDERER — auto-detect URLs ── */
+function RenderText({text}){
+  if(!text)return null;
+  const urlRegex=/(https?:\/\/[^\s]+)/g;
+  const parts=text.split(urlRegex);
+  return<span>{parts.map((p,i)=>urlRegex.test(p)
+    ?<a key={i} href={p} target="_blank" rel="noopener noreferrer"
+       style={{color:"#1e40af",textDecoration:"underline",wordBreak:"break-all"}}>{p}</a>
+    :<span key={i}>{p}</span>
+  )}</span>;
+}
+
 /* ── UPDATES TAB ── */
-function UpdatesTab({task,updates,members,currentUser,onAddUpdate}){
+function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssignee,onAddUpdate,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [text,setText]=useState("");
   const [files,setFiles]=useState([]);
+  const [supersedeTarget,setSupersedeTarget]=useState(null); // update being superseded
+  const [suggestMode,setSuggestMode]=useState(false); // non-privileged suggest mode
+  const [expandedRef,setExpandedRef]=useState(null); // which update's ref chain is expanded
   const fileRef=useRef();
-  const taskUpdates=updates.filter(u=>u.taskId===task.id).sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+  const updateRefs=useRef({}); // refs for scrolling to specific updates
+
+  const canPostDirect=isAdmin||isAssignor||isAssignee;
+  const taskUpdates=updates
+    .filter(u=>u.taskId===task.id)
+    .filter(u=>{
+      // Pending suggestions: only show to author + privileged users
+      if(u.type==="suggestion"&&u.suggestionStatus==="pending"){
+        return u.authorId===currentUser.id||canPostDirect;
+      }
+      return true;
+    })
+    .sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"Unknown"};
   const addFiles=async(fileList)=>{const r=await readFiles(fileList);setFiles(f=>[...f,...r]);};
+  const removeFile=(id)=>setFiles(f=>f.filter(x=>x.id!==id));
+  const canPost=text.trim().length>0;
+
+  const scrollToUpdate=(id)=>{
+    const el=updateRefs.current[id];
+    if(el)el.scrollIntoView({behavior:"smooth",block:"center"});
+    setExpandedRef(id);
+    setTimeout(()=>setExpandedRef(null),3000);
+  };
+
   const submit=()=>{
-    if(!text.trim()&&!files.length)return;
-    onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,text:text.trim(),attachments:files,timestamp:nowISO(),type:"comment"});
-    setText("");setFiles([]);
+    if(!text.trim()){alert("Please describe this update before posting.");return;}
+    const now=nowISO();
+    if(!canPostDirect||suggestMode){
+      // Submit as suggestion pending approval
+      onAddUpdate({
+        id:uid(),taskId:task.id,authorId:currentUser.id,
+        text:text.trim(),attachments:files,timestamp:now,
+        type:"suggestion",suggestionStatus:"pending",
+        supersedesId:supersedeTarget?.id||null,
+        approvedBy:null,approvedAt:null,
+      });
+    } else {
+      // Direct post
+      const newId=uid();
+      onAddUpdate({
+        id:newId,taskId:task.id,authorId:currentUser.id,
+        text:text.trim(),attachments:files,timestamp:now,
+        type:"comment",
+        supersedesId:supersedeTarget?.id||null,
+        supersededById:null,approvedBy:null,approvedAt:null,
+      });
+      // Mark the superseded update
+      if(supersedeTarget){
+        onAddUpdate({
+          ...supersedeTarget,
+          supersededById:newId,
+          supersededAt:now,
+          supersededBy:currentUser.id,
+          _updateExisting:true,
+        });
+      }
+    }
+    setText("");setFiles([]);setSupersedeTarget(null);setSuggestMode(false);
+  };
+
+  const handleApprove=(suggestion)=>{
+    const now=nowISO();
+    const newId=uid();
+    // Post approved update
+    onAddUpdate({
+      id:newId,taskId:task.id,authorId:suggestion.authorId,
+      text:suggestion.text,attachments:suggestion.attachments||[],
+      timestamp:now,type:"comment",
+      supersedesId:suggestion.supersedesId||null,
+      supersededById:null,
+      approvedBy:currentUser.id,approvedAt:now,
+    });
+    // Mark superseded if linked
+    if(suggestion.supersedesId){
+      const orig=taskUpdates.find(u=>u.id===suggestion.supersedesId);
+      if(orig){
+        onAddUpdate({...orig,supersededById:newId,supersededAt:now,supersededBy:suggestion.authorId,_updateExisting:true});
+      }
+    }
+    // Remove suggestion
+    onApproveUpdate(suggestion.id);
+  };
+
+  const handleReject=(suggestion)=>{
+    if(!window.confirm("Reject this suggestion?"))return;
+    onRejectUpdate(suggestion.id);
   };
   return<div>
-    <div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
+    {/* ── UPDATE LIST ── */}
+    <div style={{maxHeight:420,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
       {taskUpdates.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No updates yet.</div>}
-      {taskUpdates.map(u=>{const author=getMember(u.authorId);return<div key={u.id} style={{padding:"12px 14px",background:u.type==="system"?"#f0fdf4":"#f8fafc",borderRadius:9,border:`1px solid ${u.type==="system"?"#bbf7d0":"#e2e8f0"}`}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-          <Avatar name={author.name} size={30} color={author.role==="admin"?"#c9a227":"#0f2557"}/>
-          <div style={{flex:1}}>
-            <div style={{fontSize:13,fontWeight:800,color:"#0f2557"}}>{author.name}</div>
-            <div style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</div>
+      {taskUpdates.map(u=>{
+        const author=getMember(u.authorId);
+        const approver=u.approvedBy?getMember(u.approvedBy):null;
+        const supersededByUpdate=u.supersededById?taskUpdates.find(x=>x.id===u.supersededById):null;
+        const supersedes=u.supersedesId?taskUpdates.find(x=>x.id===u.supersedesId):null;
+        const isSuperseded=!!u.supersededById;
+        const isSuggestion=u.type==="suggestion";
+        const isPending=isSuggestion&&u.suggestionStatus==="pending";
+        const isHighlighted=expandedRef===u.id;
+
+        let bgColor="#f8fafc",borderColor="#e2e8f0";
+        if(u.type==="system"){bgColor="#f0fdf4";borderColor="#bbf7d0";}
+        if(isSuperseded){bgColor="#fafafa";borderColor="#e2e8f0";}
+        if(isPending){bgColor="#fffbf5";borderColor="#fbbf24";}
+        if(isHighlighted){bgColor="#eff6ff";borderColor="#3b82f6";}
+
+        return<div key={u.id} ref={el=>updateRefs.current[u.id]=el}
+          style={{padding:"12px 14px",background:bgColor,borderRadius:9,border:`1.5px solid ${borderColor}`,opacity:isSuperseded?0.65:1,transition:"all 0.3s"}}>
+
+          {/* ── SUPERSEDED BANNER ── */}
+          {isSuperseded&&supersededByUpdate&&<div style={{marginBottom:8,padding:"5px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+            <span style={{fontSize:10,fontWeight:700,color:"#92400e"}}>⚠️ UPDATED — refer to newer update</span>
+            <button onClick={()=>scrollToUpdate(supersededByUpdate.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
+              → View Update by {getMember(supersededByUpdate.authorId)?.name} · {fmtDT(supersededByUpdate.timestamp)}
+            </button>
+          </div>}
+
+          {/* ── SUPERSEDES REFERENCE ── */}
+          {supersedes&&<div style={{marginBottom:8,padding:"5px 10px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bfdbfe",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
+            <span style={{fontSize:10,color:"#1e40af",fontWeight:700}}>↩️ Supersedes earlier update:</span>
+            <button onClick={()=>scrollToUpdate(supersedes.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
+              → {getMember(supersedes.authorId)?.name} · {fmtDT(supersedes.timestamp)}
+            </button>
+          </div>}
+
+          {/* ── PENDING SUGGESTION BANNER ── */}
+          {isPending&&<div style={{marginBottom:8,padding:"6px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#92400e",marginBottom:canPostDirect?6:0}}>
+              ⏳ Suggested Update — Pending Approval
+              {u.authorId===currentUser.id&&" (your suggestion)"}
+            </div>
+            {canPostDirect&&<div style={{display:"flex",gap:6}}>
+              <button onClick={()=>handleApprove(u)} style={{padding:"4px 12px",borderRadius:5,border:"none",background:"#166534",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ Approve & Post</button>
+              <button onClick={()=>handleReject(u)} style={{padding:"4px 10px",borderRadius:5,border:"1px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>❌ Reject</button>
+            </div>}
+          </div>}
+
+          {/* ── APPROVED BY BANNER ── */}
+          {u.approvedBy&&approver&&<div style={{marginBottom:8,padding:"4px 10px",background:"#f0fdf4",borderRadius:6,border:"1px solid #bbf7d0"}}>
+            <span style={{fontSize:10,color:"#166534",fontWeight:700}}>✅ Approved by {approver.name} · {fmtDT(u.approvedAt)}</span>
+          </div>}
+
+          {/* ── HEADER ── */}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+            <Avatar name={author.name} size={30} color={author.role==="admin"?"#c9a227":"#0f2557"}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:800,color:"#0f2557"}}>
+                {author.name}
+                {u.approvedBy&&approver&&<span style={{fontSize:10,fontWeight:400,color:"#64748b",marginLeft:6}}>written by · approved by {approver.name}</span>}
+              </div>
+              <div style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</div>
+            </div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
+              {u.type==="system"&&<Badge text="System" color="#166534" bg="#dcfce7" small/>}
+              {isSuperseded&&<Badge text="Outdated" color="#92400e" bg="#fef3c7" small/>}
+              {isPending&&<Badge text="Pending" color="#92400e" bg="#fef3c7" small/>}
+            </div>
           </div>
-          {u.type==="system"&&<Badge text="System" color="#166534" bg="#dcfce7" small/>}
-        </div>
-        {u.text&&<div style={{fontSize:13,color:"#374151",lineHeight:1.6,paddingLeft:38}}>{u.text}</div>}
-        {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}><InlineFiles files={u.attachments}/></div>}
-        <div style={{fontSize:10,color:"#94a3b8",marginTop:6,paddingLeft:38,fontStyle:"italic"}}>🔒 This record cannot be edited</div>
-      </div>;})}
+
+          {/* ── TEXT with clickable links ── */}
+          {u.text&&<div style={{fontSize:13,color:isSuperseded?"#94a3b8":"#374151",lineHeight:1.6,paddingLeft:38,marginBottom:8,textDecoration:isSuperseded?"none":"none"}}>
+            <RenderText text={u.text}/>
+          </div>}
+
+          {/* ── ATTACHMENTS ── */}
+          {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}>
+            {u.attachments.map(f=>{
+              const isImg=f.type&&f.type.startsWith("image/");
+              return<div key={f.id} style={{marginBottom:6}}>
+                {isImg
+                  ?<div style={{position:"relative",borderRadius:7,overflow:"hidden",border:"1px solid #e2e8f0",maxWidth:320}}>
+                    <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
+                    <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                      <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                      <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+                    </div>
+                  </div>
+                  :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 11px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
+                    <span style={{fontSize:15}}>{FILE_ICON(f.type)}</span>
+                    <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{f.name}</span>
+                    <span style={{color:"#94a3b8",fontSize:10,flexShrink:0}}>({fmtBytes(f.size)})</span>
+                    <span style={{color:"#1e40af",fontSize:10,flexShrink:0}}>⬇</span>
+                  </a>}
+              </div>;
+            })}
+          </div>}
+
+          {/* ── FOOTER: supersede button + lock + admin delete ── */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,paddingLeft:38,flexWrap:"wrap",gap:6}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>🔒 This record cannot be edited</span>
+              {isAdmin&&u.type!=="system"&&<button
+                onClick={()=>{if(window.confirm("Permanently delete this update record? This cannot be undone."))onDeleteUpdate(u.id);}}
+                style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff0f0",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer"}}>
+                🗑 Delete
+              </button>}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              {!isSuperseded&&!isPending&&u.type!=="system"&&canPostDirect&&<button
+                onClick={()=>{setSupersedeTarget(u);setSuggestMode(false);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
+                style={{fontSize:10,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
+                ↩️ Supersede This
+              </button>}
+              {!isSuperseded&&!isPending&&u.type!=="system"&&!canPostDirect&&<button
+                onClick={()=>{setSupersedeTarget(u);setSuggestMode(true);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
+                style={{fontSize:10,color:"#8b5cf6",fontWeight:700,background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
+                💡 Suggest Update
+              </button>}
+            </div>
+          </div>
+        </div>;
+      })}
     </div>
-    <div style={{border:"1.5px solid #e2e8f0",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Add an update, note or status change… (cannot be edited after posting)" style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:72,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#f8fafc",outline:"none"}}/>
-      {files.length>0&&<div style={{padding:"0 12px 8px"}}><InlineFiles files={files}/></div>}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0"}}>
+
+    {/* ── SUPERSEDE TARGET INDICATOR ── */}
+    {supersedeTarget&&<div style={{background:"#fff7ed",border:"1.5px solid #f97316",borderRadius:8,padding:"8px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <div>
+        <div style={{fontSize:11,fontWeight:700,color:"#f97316"}}>↩️ {suggestMode?"Suggesting update to supersede:":"Superseding update from:"} {getMember(supersedeTarget.authorId)?.name} · {fmtDT(supersedeTarget.timestamp)}</div>
+        <div style={{fontSize:11,color:"#92400e",marginTop:2,fontStyle:"italic"}}>"{supersedeTarget.text?.slice(0,60)}{supersedeTarget.text?.length>60?"…":""}"</div>
+      </div>
+      <button onClick={()=>{setSupersedeTarget(null);setSuggestMode(false);}} style={{background:"none",border:"none",color:"#f97316",fontSize:16,cursor:"pointer",flexShrink:0}}>✕</button>
+    </div>}
+
+    {/* ── SUGGEST MODE HEADER ── */}
+    {!canPostDirect&&!suggestMode&&!supersedeTarget&&<div style={{background:"#f5f3ff",border:"1px solid #c4b5fd",borderRadius:7,padding:"7px 12px",marginBottom:8,fontSize:11,color:"#7c3aed"}}>
+      💡 You can suggest an update — it will be reviewed by Admin/Assignor/Assignee before posting.
+    </div>}
+
+    {/* ── STAGED FILES ── */}
+    {files.length>0&&<div style={{background:"#f0f9ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#1e40af",marginBottom:6}}>📎 Files staged — add a description below:</div>
+      {files.map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #dbeafe"}}>
+        <span style={{fontSize:14}}>{FILE_ICON(f.type)}</span>
+        <span style={{fontSize:12,color:"#1e293b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+        <span style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</span>
+        <button onClick={()=>removeFile(f.id)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:14,padding:"0 4px"}}>✕</button>
+      </div>)}
+    </div>}
+
+    {/* ── INPUT BOX ── */}
+    <div style={{border:`1.5px solid ${suggestMode?"#c4b5fd":"#e2e8f0"}`,borderRadius:9,overflow:"hidden",background:"#fff"}}>
+      <textarea id="update-textarea" value={text} onChange={e=>setText(e.target.value)}
+        placeholder={
+          suggestMode?"💡 Write your suggested update — it will be sent for approval before posting…"
+          :supersedeTarget?"↩️ Write the updated information that supersedes the above…"
+          :!canPostDirect?"💡 Write your suggested update — it will be sent for approval…"
+          :"Add an update, note or status change… (Cannot be edited after posting)"}
+        style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:80,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:suggestMode?"#faf5ff":files.length>0&&!text.trim()?"#fffbf5":"#f8fafc",outline:"none"}}/>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0",flexWrap:"wrap",gap:6}}>
         <button onClick={()=>fileRef.current?.click()} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          📎 Attach
+          📎 Attach File
         </button>
         <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
-        <button onClick={submit} disabled={!text.trim()&&!files.length} style={{padding:"7px 20px",borderRadius:6,border:"none",background:(text.trim()||files.length)?"#0f2557":"#e2e8f0",color:(text.trim()||files.length)?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:(text.trim()||files.length)?"pointer":"default"}}>
-          📌 Post Update (Permanent)
-        </button>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {(suggestMode||!canPostDirect)&&<button onClick={()=>{setSuggestMode(false);setSupersedeTarget(null);}} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Cancel</button>}
+          <button onClick={submit} disabled={!canPost} style={{padding:"7px 20px",borderRadius:6,border:"none",
+            background:!canPost?"#e2e8f0":(suggestMode||!canPostDirect)?"#7c3aed":"#0f2557",
+            color:canPost?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:canPost?"pointer":"default"}}>
+            {(suggestMode||!canPostDirect)?"💡 Submit for Approval":"📌 Post Update (Permanent)"}
+          </button>
+        </div>
       </div>
+    </div>
+    <div style={{fontSize:10,color:"#94a3b8",marginTop:6,textAlign:"center"}}>
+      {canPostDirect?"Files must always have a description — this keeps the audit trail meaningful."
+      :"Your suggestion will only be visible to you and approvers until approved."}
     </div>
   </div>;
 }
@@ -308,8 +555,15 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
 }
 
 /* ── TASK DETAIL MODAL ── */
-function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange}){
+function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [tab,setTab]=useState("info");
+  const [editingDueDate,setEditingDueDate]=useState(false);
+  const [newDueDate,setNewDueDate]=useState(task.dueDate||"");
+  const [newDueTime,setNewDueTime]=useState(task.dueTime||"18:00");
+  const [savingDue,setSavingDue]=useState(false);
+  const [completing,setCompleting]=useState(false);
+  const [undoingComplete,setUndoingComplete]=useState(false);
+
   const sm=STATUS_META[task.status]||STATUS_META["Not Started"];
   const pm=PRIORITY_META[task.priority]||PRIORITY_META["Medium"];
   const getMember=(id)=>members.find(m=>m.id===id);
@@ -321,16 +575,55 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   const taskUpdates=updates.filter(u=>u.taskId===task.id);
   const taskMsgs=messages.filter(m=>m.taskId===task.id);
   const urgentMsgs=taskMsgs.filter(m=>m.urgent).length;
+
+  const isAssignee=task.assigneeId===currentUser.id;
+  const isAssignor=task.assignorId===currentUser.id;
+  const canComplete=isAssignee||isAssignor||isAdmin;
+  const canEditDue=isAssignor||isAdmin;
+  const isCompleted=task.status==="Completed"||!!task.completedDate;
+
+  const handleMarkComplete=async()=>{
+    if(!window.confirm("Mark this task as Completed?"))return;
+    setCompleting(true);
+    await onSaveTask({...task,status:"Completed",completedDate:today()});
+    await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
+      text:`✅ Task marked as Completed by ${currentUser.name} on ${fmtDate(today())}.`,
+      attachments:[],timestamp:nowISO(),type:"system"});
+    setCompleting(false);
+  };
+
+  const handleUndoComplete=async()=>{
+    if(!window.confirm("Undo completion and revert to In Progress?"))return;
+    setUndoingComplete(true);
+    await onSaveTask({...task,status:"In Progress",completedDate:""});
+    await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
+      text:`↩️ Completion undone by ${currentUser.name}. Status reverted to In Progress.`,
+      attachments:[],timestamp:nowISO(),type:"system"});
+    setUndoingComplete(false);
+  };
+
+  const handleSaveDueDate=async()=>{
+    if(!newDueDate){alert("Please select a due date.");return;}
+    setSavingDue(true);
+    const old=task.dueDate?fmtDate(task.dueDate):"(none)";
+    await onSaveTask({...task,dueDate:newDueDate,dueTime:newDueTime});
+    await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
+      text:`📅 Due date updated by ${currentUser.name}: ${old} → ${fmtDate(newDueDate)} ${newDueTime}.`,
+      attachments:[],timestamp:nowISO(),type:"system"});
+    setSavingDue(false);
+    setEditingDueDate(false);
+  };
+
   const TABS=[
     {id:"info",label:"Info"},
     {id:"updates",label:`Updates${taskUpdates.length?` (${taskUpdates.length})`:""}`},
     {id:"messages",label:`Chat${taskMsgs.length?` (${taskMsgs.length})`:""}${urgentMsgs?" 🚨":""}`},
-    {id:"attachments",label:`Files${task.attachments?.length?` (${task.attachments.length})`:""}`},
   ];
   const row=(label,val)=><div style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f1f5f9",alignItems:"flex-start"}}>
     <span style={{fontSize:12,color:"#94a3b8",fontWeight:600,flexShrink:0,marginRight:16,minWidth:110}}>{label}</span>
     <span style={{fontSize:13,color:"#1e293b",fontWeight:500,textAlign:"right"}}>{val}</span>
   </div>;
+
   return<div style={{padding:26}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
       <div style={{flex:1,paddingRight:14}}>
@@ -341,6 +634,44 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
       </div>
       <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8",flexShrink:0}}>✕</button>
     </div>
+
+    {/* ── QUICK ACTION BUTTONS ── */}
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
+      {canComplete&&!isCompleted&&<button onClick={handleMarkComplete} disabled={completing} style={{padding:"8px 16px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#166534,#16a34a)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:completing?0.7:1}}>
+        {completing?"Saving…":"✅ Mark Complete"}
+      </button>}
+      {canComplete&&isCompleted&&(isAdmin||isAssignor)&&<button onClick={handleUndoComplete} disabled={undoingComplete} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #64748b",background:"#fff",color:"#64748b",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:undoingComplete?0.7:1}}>
+        {undoingComplete?"Saving…":"↩️ Undo Complete"}
+      </button>}
+      {canEditDue&&!editingDueDate&&<button onClick={()=>{setEditingDueDate(true);setNewDueDate(task.dueDate||"");setNewDueTime(task.dueTime||"18:00");}} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #1e40af",background:"#fff",color:"#1e40af",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+        📅 Edit Due Date
+      </button>}
+      {(isAdmin||isAssignor)&&<button onClick={onEdit} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #0f2557",background:"#fff",color:"#0f2557",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+        ✏️ Edit Task
+      </button>}
+    </div>
+
+    {/* ── INLINE DUE DATE EDITOR ── */}
+    {editingDueDate&&<div style={{background:"#eff6ff",borderRadius:9,padding:"14px",marginBottom:14,border:"1.5px solid #bfdbfe"}}>
+      <div style={{fontSize:12,fontWeight:800,color:"#1e40af",marginBottom:10}}>📅 Update Due Date</div>
+      <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontSize:10,color:"#64748b",fontWeight:700,marginBottom:4}}>DATE</div>
+          <input type="date" value={newDueDate} onChange={e=>setNewDueDate(e.target.value)} style={{border:"1.5px solid #bfdbfe",borderRadius:6,padding:"8px 10px",fontSize:13,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
+        </div>
+        <div>
+          <div style={{fontSize:10,color:"#64748b",fontWeight:700,marginBottom:4}}>TIME</div>
+          <input type="time" value={newDueTime} onChange={e=>setNewDueTime(e.target.value)} style={{border:"1.5px solid #bfdbfe",borderRadius:6,padding:"8px 10px",fontSize:13,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={handleSaveDueDate} disabled={savingDue} style={{padding:"8px 18px",borderRadius:6,border:"none",background:"#1e40af",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:savingDue?0.7:1}}>
+            {savingDue?"Saving…":"Save"}
+          </button>
+          <button onClick={()=>setEditingDueDate(false)} style={{padding:"8px 12px",borderRadius:6,border:"1.5px solid #bfdbfe",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
+        </div>
+      </div>
+    </div>}
+
     <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
       <Badge text={task.status} color={sm.color} bg={sm.bg}/><Badge text={pm.label} color={pm.color} bg={pm.color+"18"}/>
       {assignee&&<Badge text={`👤 ${assignee.name}`} color="#475569" bg="#f1f5f9"/>}
@@ -356,23 +687,113 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
       {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"–")}
       {ccMembers.length>0&&row("CC",<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>{ccMembers.map(m=><Badge key={m.id} text={m.name} color="#475569" bg="#f1f5f9" small/>)}</div>)}
       {task.remarks&&row("Remarks",task.remarks)}
-      {linked.length>0&&<div style={{marginTop:12}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>Depends On</div>
-        {linked.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#f8fafc",borderRadius:6,marginBottom:5,border:"1px solid #e2e8f0"}}>
-          <span style={{width:7,height:7,borderRadius:"50%",background:STATUS_META[t.status]?.dot||"#94a3b8",flexShrink:0}}/><span style={{fontSize:11,color:"#0f2557",fontWeight:600}}>{t.ref}</span>
-          <span style={{fontSize:11,color:"#475569",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.task}</span><Badge text={t.status} color={STATUS_META[t.status]?.color} bg={STATUS_META[t.status]?.bg} small/>
-        </div>)}
+      {(()=>{
+        // Collect all updates that have attachments for this task
+        const updatesWithFiles=updates.filter(u=>u.taskId===task.id&&u.attachments&&u.attachments.length>0).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+        if(!updatesWithFiles.length)return null;
+        return<div style={{padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
+          <div style={{fontSize:12,color:"#94a3b8",fontWeight:600,marginBottom:10}}>📎 Attachments ({updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)} file{updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)!==1?"s":""})</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {updatesWithFiles.map(u=>{
+              const author=members.find(m=>m.id===u.authorId)||{name:"?"};
+              return<div key={u.id} style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",overflow:"hidden"}}>
+                {/* Context header — what is this file for */}
+                <div style={{padding:"7px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"flex-start",gap:8}}>
+                  <Avatar name={author.name} size={20} color="#0f2557"/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:700,color:"#0f2557"}}>{author.name} · <span style={{fontWeight:400,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</span></div>
+                    {u.type!=="system"&&u.text&&<div style={{fontSize:12,color:"#374151",marginTop:2,fontStyle:"italic"}}>"{u.text}"</div>}
+                  </div>
+                </div>
+                {/* Files */}
+                <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:6}}>
+                  {u.attachments.map(f=>{
+                    const isImg=f.type&&f.type.startsWith("image/");
+                    return<div key={f.id}>
+                      {isImg
+                        ?<div style={{position:"relative",borderRadius:6,overflow:"hidden",border:"1px solid #e2e8f0"}}>
+                          <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
+                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                            <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                            <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+                          </div>
+                        </div>
+                        :<a href={f.data} download={f.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,textDecoration:"none"}}>
+                          <span style={{fontSize:18}}>{FILE_ICON(f.type)}</span>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:12,fontWeight:600,color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
+                            <div style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</div>
+                          </div>
+                          <span style={{fontSize:11,color:"#1e40af",fontWeight:700,flexShrink:0}}>⬇ Save</span>
+                        </a>}
+                    </div>;
+                  })}
+                </div>
+              </div>;
+            })}
+          </div>
+          <div style={{marginTop:8,fontSize:10,color:"#94a3b8",textAlign:"center"}}>To add files, go to the Updates tab and attach with a description.</div>
+        </div>;
+      })()}
+      {linked.length>0&&<div style={{marginTop:12}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>
+          Depends On <span style={{fontSize:9,color:"#94a3b8",fontWeight:400,textTransform:"none"}}>(tap to open)</span>
+        </div>
+        {linked.map(lt=>{
+          const isBlocked=lt.status!=="Completed"&&lt.status!=="On Hold";
+          return<div key={lt.id}
+            onClick={()=>{onClose();setTimeout(()=>onOpenLinked(lt.id),80);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:isBlocked?"#fff7ed":"#f0fdf4",borderRadius:8,marginBottom:6,border:`1.5px solid ${isBlocked?"#fed7aa":"#bbf7d0"}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.1)";e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_META[lt.status]?.dot||"#94a3b8",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:"#0f2557",fontWeight:800}}>{lt.ref}</span>
+                <Badge text={lt.status} color={STATUS_META[lt.status]?.color} bg={STATUS_META[lt.status]?.bg} small/>
+              </div>
+              <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{lt.task}</div>
+            </div>
+            {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+              <span style={{fontSize:9,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:4,padding:"1px 5px"}}>⚠ Blocking</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to nudge →</span>
+            </div>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
+          </div>;
+        })}
       </div>}
-      {dependants.length>0&&<div style={{marginTop:10}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>Blocking</div>
-        {dependants.map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#fff7ed",borderRadius:6,marginBottom:5,border:"1px solid #fed7aa"}}>
-          <span style={{width:7,height:7,borderRadius:"50%",background:STATUS_META[t.status]?.dot||"#94a3b8",flexShrink:0}}/><span style={{fontSize:11,color:"#0f2557",fontWeight:600}}>{t.ref}</span>
-          <span style={{fontSize:11,color:"#475569",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.task}</span><Badge text={t.status} color={STATUS_META[t.status]?.color} bg={STATUS_META[t.status]?.bg} small/>
-        </div>)}
+      {dependants.length>0&&<div style={{marginTop:10}}>
+        <div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>
+          Blocking <span style={{fontSize:9,color:"#94a3b8",fontWeight:400,textTransform:"none"}}>(tap to open)</span>
+        </div>
+        {dependants.map(dt=>{
+          const isBlocked=dt.status!=="Completed"&&dt.status!=="On Hold";
+          return<div key={dt.id}
+            onClick={()=>{onClose();setTimeout(()=>onOpenLinked(dt.id),80);}}
+            style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:isBlocked?"#fff5f5":"#f0fdf4",borderRadius:8,marginBottom:6,border:`1.5px solid ${isBlocked?"#fecaca":"#bbf7d0"}`,cursor:"pointer",transition:"box-shadow 0.15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 2px 12px rgba(0,0,0,0.1)";e.currentTarget.style.transform="translateY(-1px)";}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.transform="none";}}>
+            <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_META[dt.status]?.dot||"#94a3b8",flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:11,color:"#0f2557",fontWeight:800}}>{dt.ref}</span>
+                <Badge text={dt.status} color={STATUS_META[dt.status]?.color} bg={STATUS_META[dt.status]?.bg} small/>
+              </div>
+              <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{dt.task}</div>
+            </div>
+            {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+              <span style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff5f5",border:"1px solid #fecaca",borderRadius:4,padding:"1px 5px"}}>🔴 Not Done</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to check →</span>
+            </div>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
+          </div>;
+        })}
       </div>}
       <DeleteSection task={task} currentUser={currentUser} isAdmin={isAdmin} deleteRequests={deleteRequests} onDeleteAdmin={onDeleteAdmin} onRequestDelete={onRequestDelete}/>
     </div>}
-    {tab==="updates"&&<UpdatesTab task={task} updates={updates} members={members} currentUser={currentUser} onAddUpdate={onAddUpdate}/>}
+    {tab==="updates"&&<UpdatesTab task={task} updates={updates} members={members} currentUser={currentUser} isAdmin={isAdmin} isAssignor={isAssignor} isAssignee={isAssignee} onAddUpdate={onAddUpdate} onApproveUpdate={onApproveUpdate} onRejectUpdate={onRejectUpdate} onDeleteUpdate={onDeleteUpdate}/>}
     {tab==="messages"&&<MessagesTab task={task} messages={messages} members={members} currentUser={currentUser} onSendMessage={onSendMessage}/>}
-    {tab==="attachments"&&<AttachmentPanel attachments={task.attachments||[]} onChange={onAttachmentChange}/>}
+
   </div>;
 }
 
@@ -776,9 +1197,10 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             <span style={{fontSize:10,fontWeight:700,color:pm.color,marginLeft:"auto"}}>{pm.label}</span>
             {urgentMsg>0&&<span style={{fontSize:11}}>🚨</span>}
           </div>
-          <div style={{fontSize:13,fontWeight:700,color:"#0f2557",lineHeight:1.4,marginBottom:6,wordBreak:"break-word"}}>
-            {hasLinks&&<span style={{fontSize:11,marginRight:4}}>🔗</span>}{t.task}
-          </div>
+          <div style={{fontSize:13,fontWeight:700,color:"#0f2557",lineHeight:1.4,marginBottom:4,wordBreak:"break-word"}}>{t.task}</div>
+          {hasLinks&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,display:"flex",alignItems:"center",gap:3}}>
+            <span>🔗</span><span style={{fontWeight:600}}>Has linked tasks</span>
+          </div>}
           {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:6}}>📁 {proj.name}</div>}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             {assignor&&<div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -861,11 +1283,10 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,fontWeight:700,color:"#c9a227",wordBreak:"break-all"}}>{t.ref}</div></div>
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"👤 Personal":proj?.name||"–"}</div></div>
             <div style={{overflow:"hidden"}}>
-              <div style={{display:"flex",gap:3,alignItems:"flex-start"}}>
-                {hasLinks&&<span style={{fontSize:9,flexShrink:0,marginTop:1}}>🔗</span>}
-                <div><div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
-                  {getMember(t.assignorId)&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>by {getMember(t.assignorId)?.name}</div>}
-                </div>
+              <div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>
+                {getMember(t.assignorId)&&<span style={{fontSize:9,color:"#94a3b8"}}>by {getMember(t.assignorId)?.name}</span>}
+                {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px"}}>🔗 linked</span>}
               </div>
             </div>
             <div style={{overflow:"hidden"}}>{assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}</div>
@@ -1047,6 +1468,9 @@ function App(){
   const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
   const [sortKey,setSortKey]=useState(()=>LS.get("tkj_sort_key")||"dueDate");
   const [sortDir,setSortDir]=useState(()=>LS.get("tkj_sort_dir")||"asc");
+  const [toasts,setToasts]=useState([]);
+  const [muted,setMuted]=useState(()=>LS.get("tkj_muted")||false);
+  const prevNotifIds=useRef(new Set());
   const bellRef=useRef();
   const headerW=useWindowWidth();
   const narrow=headerW<640;
@@ -1131,7 +1555,24 @@ function App(){
     await db.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:currentUserId}).eq("id",id);
     setModal(null);setSelected(null);
   };
-  const addUpdate=async(u)=>{await db.from("task_updates").insert(toUpdate(u));};
+  const addUpdate=async(u)=>{
+    if(u._updateExisting){
+      // Update existing record (for supersede marking)
+      const {_updateExisting,...row}=u;
+      await db.from("task_updates").update(toUpdate(row)).eq("id",row.id);
+    } else {
+      await db.from("task_updates").insert(toUpdate(u));
+    }
+  };
+  const approveUpdate=async(suggestionId)=>{
+    await db.from("task_updates").delete().eq("id",suggestionId);
+  };
+  const rejectUpdate=async(suggestionId)=>{
+    await db.from("task_updates").delete().eq("id",suggestionId);
+  };
+  const deleteUpdate=async(updateId)=>{
+    await db.from("task_updates").delete().eq("id",updateId);
+  };
   const sendMessage=async(m)=>{await db.from("task_messages").insert(toMsg(m));};
   const updateAttachments=async(taskId,attachments)=>{
     await db.from("tasks").update({attachments}).eq("id",taskId);
@@ -1173,6 +1614,7 @@ function App(){
     setMoods(p=>({...p,[`${todayStr}_${memberId}`]:moodId}));
   };
   const markNotifsRead=()=>{const seen={...notifSeen,[currentUserId]:nowISO()};setNotifSeen(seen);LS.set("tkj_notif_seen",seen);};
+  const toggleMute=()=>{const m=!muted;setMuted(m);LS.set("tkj_muted",m);};
 
   const enriched=useMemo(()=>tasks.map(t=>{
     if(t.status!=="Completed"&&t.status!=="On Hold"&&t.dueDate&&daysDiff(t.dueDate)<0)return{...t,status:"Overdue"};return t;
@@ -1216,6 +1658,82 @@ function App(){
     const nu=updates.filter(u=>u.taskId&&myTaskIds.has(u.taskId)&&u.authorId!==currentUserId&&u.type!=="system"&&u.timestamp>seenTs).map(u=>({...u,type:"update"}));
     return[...nm,...nu].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   },[messages,updates,tasks,currentUserId,notifSeen]);
+
+  // ── FLOATING TOAST TRIGGER ──
+  // Uses raw messages+updates (NOT filtered by notifSeen) so toasts fire
+  // even after bell has been opened. Tracks by id to avoid duplicates.
+  // On first load: pre-populate prevNotifIds so we don't toast old history.
+  const isFirstLoad=useRef(true);
+
+  useEffect(()=>{
+    if(!currentUserId||!loaded)return;
+    const myTaskIds=new Set(
+      tasks.filter(t=>t.assigneeId===currentUserId||t.assignorId===currentUserId||(t.cc||[]).includes(currentUserId)).map(t=>t.id)
+    );
+    const allRelevant=[
+      ...messages.filter(m=>m.taskId&&myTaskIds.has(m.taskId)&&m.authorId!==currentUserId).map(m=>({...m,type:"message"})),
+      ...updates.filter(u=>u.taskId&&myTaskIds.has(u.taskId)&&u.authorId!==currentUserId&&u.type!=="system").map(u=>({...u,type:"update"})),
+    ];
+
+    if(isFirstLoad.current){
+      // Pre-populate on first load — don't toast existing items
+      allRelevant.forEach(n=>prevNotifIds.current.add(n.id));
+      isFirstLoad.current=false;
+      return;
+    }
+
+    // Only process truly new items
+    const newItems=allRelevant.filter(n=>!prevNotifIds.current.has(n.id));
+    if(newItems.length===0)return;
+
+    newItems.forEach(n=>{
+      prevNotifIds.current.add(n.id);
+      const author=members.find(m=>m.id===n.authorId);
+      const task=enriched.find(t=>t.id===n.taskId);
+      const toastId=uid();
+      setToasts(prev=>[...prev,{
+        id:toastId,taskId:n.taskId,
+        authorName:author?.name||"Someone",
+        taskRef:task?.ref||"",
+        taskName:task?.task||"",
+        type:n.type,urgent:n.urgent||false,
+        text:n.text||"",
+        timestamp:n.timestamp
+      }]);
+      setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==toastId)),n.urgent?15000:8000);
+
+      // Sound — use a short delay so browser allows it after realtime event
+      if(!muted){
+        setTimeout(()=>{
+          try{
+            const ctx=new (window.AudioContext||window.webkitAudioContext)();
+            const playNote=(freq,start,dur)=>{
+              const o=ctx.createOscillator();
+              const g=ctx.createGain();
+              o.connect(g);g.connect(ctx.destination);
+              o.type="sine";
+              o.frequency.value=freq;
+              g.gain.setValueAtTime(0,start);
+              g.gain.linearRampToValueAtTime(0.25,start+0.02);
+              g.gain.exponentialRampToValueAtTime(0.001,start+dur);
+              o.start(start);o.stop(start+dur);
+            };
+            const t=ctx.currentTime;
+            if(n.urgent){
+              // Urgent: three sharp beeps
+              playNote(880,t,0.12);
+              playNote(880,t+0.15,0.12);
+              playNote(1100,t+0.30,0.2);
+            } else {
+              // Normal: gentle two-tone chime
+              playNote(660,t,0.2);
+              playNote(880,t+0.18,0.25);
+            }
+          }catch(e){}
+        },100);
+      }
+    });
+  },[messages,updates,tasks,currentUserId,loaded,muted]);
 
   const urgentNotifs=notifications.filter(n=>n.urgent).length;
   const pendingDeleteNotifs=isAdmin?deleteRequests.filter(r=>r.status==="pending").length:0;
@@ -1318,6 +1836,9 @@ function App(){
           </button>
           {showNotifs&&<NotifPanel notifs={notifications} members={members} tasks={enriched} projects={projects} onClose={()=>setShowNotifs(false)} onOpenTask={(id,tab)=>{openTask(id,tab);setView("list");}}/>}
         </div>
+        <button onClick={toggleMute} title={muted?"Notifications muted — click to unmute":"Notifications sound on — click to mute"} style={{padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:muted?"#ef4444":"#7ba3d4",fontSize:16}}>
+          {muted?"🔕":"🔔"}
+        </button>
         <div style={{display:"flex",alignItems:"center",gap:narrow?0:6,padding:narrow?"4px 6px":"4px 10px",background:"rgba(255,255,255,0.08)",borderRadius:7,cursor:"pointer"}} onClick={logout}>
           <Avatar name={currentUser.name} size={narrow?22:24} color="#c9a227"/>
           {!narrow&&<div><div style={{color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>{currentUser.name}{myMoodObj&&<span style={{fontSize:11}}>{myMoodObj.emoji}</span>}</div><div style={{color:"#7ba3d4",fontSize:8}}>{isAdmin?"Admin":"Member"} · Logout</div></div>}
@@ -1403,8 +1924,79 @@ function App(){
         onRequestDelete={(reason)=>submitDeleteRequest(selected.id,reason)}
         onAddUpdate={addUpdate} onSendMessage={sendMessage}
         onAttachmentChange={(a)=>updateAttachments(selected.id,a)}
+        onSaveTask={saveTask}
+        onOpenLinked={(taskId)=>{setModal(null);setSelected(null);setTimeout(()=>openTask(taskId,"info"),100);}}
+        onApproveUpdate={approveUpdate}
+        onRejectUpdate={rejectUpdate}
+        onDeleteUpdate={deleteUpdate}
       />
     </Modal>}
+
+    {/* ── FLOATING TOAST NOTIFICATIONS ── */}
+    <div style={{position:"fixed",top:70,right:16,zIndex:3000,display:"flex",flexDirection:"column",gap:10,maxWidth:340,pointerEvents:"none"}}>
+      {toasts.map(toast=>(
+        <div key={toast.id} style={{background:toast.urgent?"#fff5f5":"#fff",borderRadius:12,boxShadow:"0 8px 32px rgba(10,20,60,0.28)",border:`1.5px solid ${toast.urgent?"#fca5a5":"#e2e8f0"}`,overflow:"hidden",animation:"slideInRight 0.35s cubic-bezier(.22,.68,0,1.2)",pointerEvents:"all"}}>
+          {/* Header — clickable to go to task+tab */}
+          <div
+            onClick={()=>{
+              setToasts(prev=>prev.filter(t=>t.id!==toast.id));
+              openTask(toast.taskId, toast.type==="message"?"messages":"updates");
+              setView("list");
+            }}
+            style={{background:toast.urgent?"linear-gradient(135deg,#dc2626,#b91c1c)":"linear-gradient(135deg,#0f2557,#1e40af)",padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}
+          >
+            <div style={{display:"flex",alignItems:"center",gap:7}}>
+              <span style={{fontSize:15}}>{toast.urgent?"🚨":toast.type==="message"?"💬":"📌"}</span>
+              <div>
+                <div style={{fontSize:11,fontWeight:800,color:"#fff",lineHeight:1.2}}>{toast.urgent?"🚨 URGENT — ":""}{toast.type==="message"?"New Chat Message":"New Update Posted"}</div>
+                <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",marginTop:1}}>Tap to open → {toast.type==="message"?"Chat":"Updates"} tab</div>
+              </div>
+            </div>
+            <button
+              onClick={e=>{e.stopPropagation();setToasts(prev=>prev.filter(t=>t.id!==toast.id));}}
+              style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,color:"#fff",fontSize:12,cursor:"pointer",padding:"3px 7px",lineHeight:1,flexShrink:0}}
+            >✕</button>
+          </div>
+          {/* Body — also clickable */}
+          <div
+            onClick={()=>{
+              setToasts(prev=>prev.filter(t=>t.id!==toast.id));
+              openTask(toast.taskId, toast.type==="message"?"messages":"updates");
+              setView("list");
+            }}
+            style={{padding:"10px 12px",cursor:"pointer"}}
+            onMouseEnter={e=>e.currentTarget.style.background=toast.urgent?"#fff0f0":"#f8fafc"}
+            onMouseLeave={e=>e.currentTarget.style.background=""}
+          >
+            <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:4}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:toast.urgent?"#dc2626":"#0f2557",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:10,fontWeight:800,flexShrink:0}}>
+                {toast.authorName.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+              </div>
+              <div style={{fontSize:12,fontWeight:800,color:"#0f2557"}}>{toast.authorName}</div>
+            </div>
+            {toast.taskRef&&<div style={{fontSize:10,color:"#c9a227",fontWeight:700,marginBottom:3}}>
+              {toast.taskRef}<span style={{color:"#94a3b8",fontWeight:400,marginLeft:4}}>· {toast.taskName.slice(0,35)}{toast.taskName.length>35?"…":""}</span>
+            </div>}
+            {toast.text&&<div style={{fontSize:12,color:"#374151",lineHeight:1.45,marginBottom:4,background:"#f8fafc",borderRadius:6,padding:"5px 8px",borderLeft:"3px solid #0f2557"}}>
+              {toast.text.slice(0,100)}{toast.text.length>100?"…":""}
+            </div>}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{fontSize:9,color:"#94a3b8"}}>{fmtDT(toast.timestamp)}</div>
+              <div style={{fontSize:9,color:toast.type==="message"?"#1e40af":"#166534",fontWeight:700,background:toast.type==="message"?"#dbeafe":"#dcfce7",borderRadius:4,padding:"2px 6px"}}>
+                {toast.type==="message"?"→ Reply in Chat":"→ View Updates"}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <style>{`
+      @keyframes slideInRight {
+        from { transform: translateX(120%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+    `}</style>
 
     <div style={{textAlign:"center",padding:"14px 0 22px",fontSize:10,color:"#94a3b8"}}>
       TKJ Project Management Sdn Bhd (1676211-U) · {new Date().toLocaleDateString("en-MY",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})} · {currentUser.name} {myMoodObj?myMoodObj.emoji:""} · ☁️ Cloud Sync
