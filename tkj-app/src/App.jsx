@@ -8,63 +8,36 @@ const LS = {
   set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 }
 
-
 function useWindowWidth(){
   const [w,setW]=useState(typeof window!=="undefined"?window.innerWidth:1200);
   useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);},[]);
   return w;
 }
 
-/* â”€â”€ DATA MIGRATION â”€â”€ */
-const DATA_VERSION="v2";
+/* ── DATA MIGRATION ── */
 const migrateTaskRefs=(tasks)=>tasks.map(t=>{
-  // Old format: TKJ-PVB-2506-001 â†’ new format: PVB-0001
   if(t.ref&&/^TKJ-(.+)-\d{4}-(\d+)$/.test(t.ref)){
     const m=t.ref.match(/^TKJ-(.+)-\d{4}-(\d+)$/);
     if(m)return{...t,ref:`${m[1]}-${m[2].padStart(4,"0")}`};
   }
-  // Old personal format: PERSONAL-m2-001
   if(t.ref&&/^PERSONAL-[^-]+-\d+$/.test(t.ref)&&!t.ref.startsWith("PERSONAL-1")){
     return{...t,ref:`PERSONAL-${Date.now()}-${Math.random().toString(36).slice(2,5)}`};
   }
   return t;
 });
 
-/* â”€â”€ LOGO â”€â”€ */
-
-/* â”€â”€ CONSTANTS â”€â”€ */
-
-/* â”€â”€ HELPERS â”€â”€ */
+/* ── HELPERS ── */
 const fmtDatetime=(d,t)=>d?`${fmtDate(d)}`:"";
 
-
-/* â”€â”€ SEED DATA â”€â”€ */
-const SEED_MEMBERS=[
-  {id:"m1",name:"Eleen",role:"admin",email:"eleen@tkj.com",active:true},
-  {id:"m2",name:"Rajan",role:"member",email:"rajan@tkj.com",active:true},
-  {id:"m3",name:"Sara",role:"member",email:"sara@tkj.com",active:true},
-  {id:"m4",name:"Ahmad",role:"member",email:"ahmad@tkj.com",active:true},
-];
-const SEED_PROJECTS=[
-  {id:"p1",code:"PVB",name:"Pavilion Tower B",active:true},
-  {id:"p2",code:"ALI",name:"Ampang Link Infra",active:true},
-  {id:"p3",code:"KLS",name:"KL Sentral Office",active:true},
-];
-const SEED_TASKS=[
-  {id:"t1",ref:"PVB-0001",projectId:"p1",task:"Preliminary Cost Plan â€“ Structural",preparedDate:"2025-05-15",dueDate:"2026-07-10",completedDate:"",status:"In Progress",priority:"High",assignorId:"m1",assigneeId:"m2",cc:["m3"],remarks:"Await structural drawings from consultant.",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:"2025-05-15T08:00:00.000Z",createdBy:"m1"},
-  {id:"t2",ref:"PVB-0002",projectId:"p1",task:"BOQ Preparation â€“ Architectural",preparedDate:"2025-05-18",dueDate:"2026-08-20",completedDate:"",status:"Not Started",priority:"Medium",assignorId:"m1",assigneeId:"m3",cc:[],remarks:"",linkedTo:["t1"],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:"2025-05-18T08:00:00.000Z",createdBy:"m1"},
-  {id:"t3",ref:"ALI-0001",projectId:"p2",task:"Contractual Letter â€“ EOT Claim",preparedDate:"2025-05-01",dueDate:"2025-05-28",completedDate:"",status:"Overdue",priority:"Critical",assignorId:"m1",assigneeId:"m2",cc:["m4"],remarks:"Pending approval from legal.",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:"2025-05-01T08:00:00.000Z",createdBy:"m1"},
-];
-
-/* â”€â”€ SMALL COMPONENTS â”€â”€ */
+/* ── SMALL COMPONENTS ── */
 function Badge({text,color,bg,small}){
   return<span style={{background:bg,color,borderRadius:4,padding:small?"2px 7px":"3px 10px",fontSize:small?10:11,fontWeight:700,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{text}</span>;
 }
 function DueChip({date,time}){
-  const d=daysDiff(date);if(d===null)return<span style={{color:"#94a3b8",fontSize:12}}>â€”</span>;
+  const d=daysDiff(date);if(d===null)return<span style={{color:"#94a3b8",fontSize:12}}>–</span>;
   let color,bg,prefix;
   if(d<0){color="#991b1b";bg="#fee2e2";prefix=`${Math.abs(d)}d overdue`;}
-  else if(d===0){color="#7c2d12";bg="#ffedd5";prefix=`Due today${time?` Â· ${fmtTime(time)}`:""}`;}
+  else if(d===0){color="#7c2d12";bg="#ffedd5";prefix=`Due today${time?` · ${fmtTime(time)}`:""}`;}
   else if(d<=3){color="#92400e";bg="#fef3c7";prefix=`${d}d left`;}
   else if(d<=7){color="#1e40af";bg="#dbeafe";prefix=`${d}d left`;}
   else{color="#374151";bg="#f3f4f6";prefix=`${d}d left`;}
@@ -103,9 +76,7 @@ function MemberPicker({label,selected=[],onChange,members,excludeIds=[]}){
   </div>;
 }
 
-/* â”€â”€ FILE READER UTIL â”€â”€ */
-
-/* â”€â”€ INLINE FILE DISPLAY (auto-show images) â”€â”€ */
+/* ── INLINE FILE DISPLAY ── */
 function InlineFiles({files=[]}){
   if(!files.length)return null;
   return<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:6}}>
@@ -122,7 +93,7 @@ function InlineFiles({files=[]}){
   </div>;
 }
 
-/* â”€â”€ ATTACHMENT PANEL (full) â”€â”€ */
+/* ── ATTACHMENT PANEL ── */
 function AttachmentPanel({attachments=[],onChange,readOnly=false}){
   const inputRef=useRef();
   const [dragging,setDragging]=useState(false);
@@ -135,9 +106,9 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
       onDrop={e=>{e.preventDefault();setDragging(false);processFiles(e.dataTransfer.files);}}
       onClick={()=>inputRef.current?.click()}
       style={{border:`2px dashed ${dragging?"#1e40af":"#cbd5e1"}`,borderRadius:8,padding:"14px",textAlign:"center",cursor:"pointer",background:dragging?"#eff6ff":"#f8fafc",marginBottom:attachments.length?10:0}}>
-      <div style={{fontSize:18,marginBottom:3}}>ğŸ“</div>
+      <div style={{fontSize:18,marginBottom:3}}>📎</div>
       <div style={{fontSize:12,fontWeight:700,color:"#475569"}}>Click or drag to attach</div>
-      <div style={{fontSize:10,color:"#94a3b8"}}>Images, PDF, Word, Excel Â· Max 10MB</div>
+      <div style={{fontSize:10,color:"#94a3b8"}}>Images, PDF, Word, Excel · Max 10MB</div>
       <input ref={inputRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
     </div>}
     {attachments.map(f=>{
@@ -147,8 +118,8 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
           ?<div style={{position:"relative"}}>
             <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:7,border:"1px solid #e2e8f0",display:"block"}}/>
             <div style={{position:"absolute",bottom:6,right:6,display:"flex",gap:5}}>
-              <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"rgba(0,0,0,0.6)",color:"#fff",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>â¬‡</a>
-              {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"rgba(220,38,38,0.8)",color:"#fff",border:"none",borderRadius:4,fontSize:10,fontWeight:700,cursor:"pointer"}}>âœ•</button>}
+              <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"rgba(0,0,0,0.6)",color:"#fff",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>⬇</a>
+              {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"rgba(220,38,38,0.8)",color:"#fff",border:"none",borderRadius:4,fontSize:10,fontWeight:700,cursor:"pointer"}}>✕</button>}
             </div>
           </div>
           :<div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#f8fafc",borderRadius:7,border:"1.5px solid #e2e8f0"}}>
@@ -157,29 +128,27 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
               <div style={{fontSize:12,fontWeight:600,color:"#1e293b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
               <div style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</div>
             </div>
-            <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",fontSize:11,fontWeight:700,borderRadius:4,textDecoration:"none"}}>â¬‡</a>
-            {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 7px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:11,fontWeight:700,borderRadius:4,cursor:"pointer"}}>âœ•</button>}
+            <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",fontSize:11,fontWeight:700,borderRadius:4,textDecoration:"none"}}>⬇</a>
+            {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 7px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:11,fontWeight:700,borderRadius:4,cursor:"pointer"}}>✕</button>}
           </div>}
       </div>;
     })}
   </div>;
 }
 
-/* â”€â”€ UPDATES TAB â”€â”€ */
+/* ── UPDATES TAB ── */
 function UpdatesTab({task,updates,members,currentUser,onAddUpdate}){
   const [text,setText]=useState("");
   const [files,setFiles]=useState([]);
   const fileRef=useRef();
   const taskUpdates=updates.filter(u=>u.taskId===task.id).sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"Unknown"};
-
   const addFiles=async(fileList)=>{const r=await readFiles(fileList);setFiles(f=>[...f,...r]);};
   const submit=()=>{
     if(!text.trim()&&!files.length)return;
     onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,text:text.trim(),attachments:files,timestamp:nowISO(),type:"comment"});
-    setText(""); setFiles([]);
+    setText("");setFiles([]);
   };
-
   return<div>
     <div style={{maxHeight:340,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
       {taskUpdates.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No updates yet.</div>}
@@ -194,27 +163,26 @@ function UpdatesTab({task,updates,members,currentUser,onAddUpdate}){
         </div>
         {u.text&&<div style={{fontSize:13,color:"#374151",lineHeight:1.6,paddingLeft:38}}>{u.text}</div>}
         {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}><InlineFiles files={u.attachments}/></div>}
-        <div style={{fontSize:10,color:"#94a3b8",marginTop:6,paddingLeft:38,fontStyle:"italic"}}>ğŸ”’ This record cannot be edited</div>
+        <div style={{fontSize:10,color:"#94a3b8",marginTop:6,paddingLeft:38,fontStyle:"italic"}}>🔒 This record cannot be edited</div>
       </div>;})}
     </div>
-    {/* Input */}
     <div style={{border:"1.5px solid #e2e8f0",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Add an update, note or status changeâ€¦ (cannot be edited after posting)" style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:72,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#f8fafc",outline:"none"}}/>
+      <textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Add an update, note or status change… (cannot be edited after posting)" style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:72,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#f8fafc",outline:"none"}}/>
       {files.length>0&&<div style={{padding:"0 12px 8px"}}><InlineFiles files={files}/></div>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0"}}>
         <button onClick={()=>fileRef.current?.click()} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          ğŸ“ Attach
+          📎 Attach
         </button>
         <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
         <button onClick={submit} disabled={!text.trim()&&!files.length} style={{padding:"7px 20px",borderRadius:6,border:"none",background:(text.trim()||files.length)?"#0f2557":"#e2e8f0",color:(text.trim()||files.length)?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:(text.trim()||files.length)?"pointer":"default"}}>
-          ğŸ“Œ Post Update (Permanent)
+          📌 Post Update (Permanent)
         </button>
       </div>
     </div>
   </div>;
 }
 
-/* â”€â”€ MESSAGES TAB â”€â”€ */
+/* ── MESSAGES TAB ── */
 function MessagesTab({task,messages,members,currentUser,onSendMessage}){
   const [text,setText]=useState("");
   const [urgent,setUrgent]=useState(false);
@@ -227,19 +195,16 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"Unknown"};
   const AVATAR_COLORS=["#0f2557","#c9a227","#0ea5e9","#8b5cf6","#16a34a","#dc2626"];
   const memberColor=(id)=>AVATAR_COLORS[members.findIndex(m=>m.id===id)%AVATAR_COLORS.length];
-
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[taskMsgs.length]);
-
   const handleText=(v)=>{setText(v);setMentioning(v.endsWith("@"));};
   const addMention=(m)=>{setText(prev=>prev.slice(0,-1)+`@${m.name} `);setMentions(prev=>[...new Set([...prev,m.id])]);setMentioning(false);};
   const addFiles=async(fileList)=>{const r=await readFiles(fileList);setFiles(f=>[...f,...r]);};
   const send=()=>{
     if(!text.trim()&&!files.length)return;
     onSendMessage({id:uid(),taskId:task.id,authorId:currentUser.id,text:text.trim(),attachments:files,timestamp:nowISO(),urgent,mentions});
-    setText(""); setUrgent(false); setMentions([]); setFiles([]);
+    setText("");setUrgent(false);setMentions([]);setFiles([]);
   };
   const handleKey=(e)=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}};
-
   return<div>
     <div style={{maxHeight:320,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,padding:"4px 2px",marginBottom:10}}>
       {taskMsgs.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No messages yet. Start the discussion!</div>}
@@ -249,15 +214,14 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
         const mentionedMe=msg.mentions?.includes(currentUser.id);
         const aColor=memberColor(msg.authorId);
         return<div key={msg.id}>
-          {msg.urgent&&<div className="urgent-pulse" style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",borderRadius:5,padding:"3px 0",marginBottom:4}}>ğŸš¨ URGENT â€” IMMEDIATE ATTENTION REQUIRED</div>}
+          {msg.urgent&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",borderRadius:5,padding:"3px 0",marginBottom:4}}>🚨 URGENT – IMMEDIATE ATTENTION REQUIRED</div>}
           <div style={{display:"flex",gap:8,alignItems:"flex-start",flexDirection:isMe?"row-reverse":"row"}}>
             <Avatar name={author.name} size={32} color={aColor}/>
             <div style={{maxWidth:"75%"}}>
-              {/* Always show name + time */}
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexDirection:isMe?"row-reverse":"row"}}>
                 <span style={{fontSize:12,fontWeight:800,color:isMe?"#0f2557":aColor}}>{isMe?"You":author.name}</span>
                 <span style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(msg.timestamp)}</span>
-                {msg.urgent&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700}}>ğŸš¨ URGENT</span>}
+                {msg.urgent&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700}}>🚨 URGENT</span>}
               </div>
               <div style={{background:isMe?"#0f2557":mentionedMe?"#fef9c3":"#f1f5f9",borderRadius:10,padding:"9px 12px",border:mentionedMe?"1.5px solid #fbbf24":"none"}}>
                 {msg.text&&<div style={{fontSize:13,color:isMe?"#fff":"#1e293b",lineHeight:1.5,whiteSpace:"pre-wrap"}}>
@@ -271,24 +235,21 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
       })}
       <div ref={bottomRef}/>
     </div>
-    {/* @mention dropdown */}
     {mentioning&&<div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,padding:6,marginBottom:6,boxShadow:"0 4px 16px rgba(0,0,0,0.1)"}}>
       <div style={{fontSize:10,color:"#94a3b8",marginBottom:4,padding:"0 4px"}}>Tag a member:</div>
       {members.filter(m=>m.active&&m.id!==currentUser.id).map(m=><button key={m.id} onClick={()=>addMention(m)} style={{display:"flex",alignItems:"center",gap:7,width:"100%",padding:"7px 8px",background:"none",border:"none",cursor:"pointer",borderRadius:5,textAlign:"left"}} onMouseEnter={e=>e.currentTarget.style.background="#f0f4f8"} onMouseLeave={e=>e.currentTarget.style.background="none"}>
         <Avatar name={m.name} size={22} color={memberColor(m.id)}/><span style={{fontSize:13,color:"#1e293b",fontWeight:600}}>{m.name}</span>
       </button>)}
     </div>}
-    {/* Staged files preview */}
     {files.length>0&&<div style={{padding:"6px 10px",background:"#f8fafc",borderRadius:7,marginBottom:6,border:"1px solid #e2e8f0"}}><InlineFiles files={files}/></div>}
-    {/* Input */}
     <div style={{border:"1.5px solid #e2e8f0",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-      <textarea className="msg-input" value={text} onChange={e=>handleText(e.target.value)} onKeyDown={handleKey} placeholder="Type a messageâ€¦ @ to mention, Enter to send" style={{width:"100%",padding:"10px 12px",border:"none",resize:"none",height:58,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#fff",outline:"none"}}/>
+      <textarea value={text} onChange={e=>handleText(e.target.value)} onKeyDown={handleKey} placeholder="Type a message… @ to mention, Enter to send" style={{width:"100%",padding:"10px 12px",border:"none",resize:"none",height:58,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#fff",outline:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"#f8fafc",borderTop:"1px solid #e2e8f0"}}>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>ğŸ“</button>
+          <button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>📎</button>
           <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
           <button onClick={()=>setUrgent(u=>!u)} style={{padding:"5px 11px",borderRadius:5,border:`1.5px solid ${urgent?"#dc2626":"#e2e8f0"}`,background:urgent?"#fee2e2":"#fff",color:urgent?"#dc2626":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-            ğŸš¨ {urgent?"URGENT":"Urgent"}
+            🚨 {urgent?"URGENT":"Urgent"}
           </button>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -300,61 +261,44 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
   </div>;
 }
 
-/* â”€â”€ TASK DETAIL MODAL â”€â”€ */
-
-/* â”€â”€ DELETE REQUEST SECTION â”€â”€ */
+/* ── DELETE SECTION ── */
 function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,onRequestDelete}){
   const [showRequestForm,setShowRequestForm]=useState(false);
   const [reason,setReason]=useState("");
   const pending=deleteRequests.find(r=>r.taskId===task.id&&r.status==="pending");
   const allReqs=deleteRequests.filter(r=>r.taskId===task.id).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   const isInvolved=task.assigneeId===currentUser.id||task.assignorId===currentUser.id;
-
   const submitRequest=()=>{
     if(!reason.trim()){alert("Please provide a reason for deletion.");return;}
     onRequestDelete(reason.trim());
-    setReason(""); setShowRequestForm(false);
+    setReason("");setShowRequestForm(false);
   };
-
   return<div style={{marginTop:18}}>
-    {/* Pending banner */}
     {pending&&<div style={{padding:"10px 14px",background:"#fef3c7",borderRadius:8,border:"1.5px solid #fbbf24",marginBottom:12}}>
-      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:3}}>â³ Delete Request Pending</div>
+      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:3}}>⏳ Delete Request Pending</div>
       <div style={{fontSize:12,color:"#92400e"}}>Reason: "{pending.reason}"</div>
-      <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Submitted {fmtDT(pending.timestamp)} Â· Awaiting Admin approval</div>
+      <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Submitted {fmtDT(pending.timestamp)} · Awaiting Admin approval</div>
     </div>}
-
-    {/* Previous requests history */}
     {allReqs.filter(r=>r.status!=="pending").map(r=><div key={r.id} style={{padding:"8px 12px",background:r.status==="approved"?"#fee2e2":"#f0fdf4",borderRadius:7,border:`1px solid ${r.status==="approved"?"#fecaca":"#bbf7d0"}`,marginBottom:8,fontSize:11}}>
-      <span style={{fontWeight:700,color:r.status==="approved"?"#991b1b":"#166534"}}>{r.status==="approved"?"âœ… Delete Approved":"âŒ Delete Rejected"}</span>
+      <span style={{fontWeight:700,color:r.status==="approved"?"#991b1b":"#166534"}}>{r.status==="approved"?"✅ Delete Approved":"❌ Delete Rejected"}</span>
       <span style={{color:"#94a3b8",marginLeft:8}}>{fmtDT(r.reviewedAt)}</span>
       {r.reviewNote&&<div style={{color:"#475569",marginTop:2}}>Note: {r.reviewNote}</div>}
     </div>)}
-
     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-      <button onClick={()=>setModal&&null} style={{display:"none"}}/>
-      {/* Edit always available */}
-
-      {/* Admin: direct delete (hard) */}
       {isAdmin&&<button onClick={()=>{if(window.confirm("Permanently delete? This is irreversible."))onDeleteAdmin();}} style={{padding:"9px 16px",borderRadius:7,border:"1.5px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-        ğŸ—‘ Admin Delete
+        🗑 Admin Delete
       </button>}
-
-      {/* Assignee/Assignor: request delete */}
       {!isAdmin&&isInvolved&&!pending&&!task.deleted&&<button onClick={()=>setShowRequestForm(v=>!v)} style={{padding:"9px 16px",borderRadius:7,border:"1.5px solid #f97316",background:"#fff",color:"#f97316",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-        ğŸ“‹ Request Deletion
+        📋 Request Deletion
       </button>}
-
       {!isAdmin&&!isInvolved&&!pending&&<div style={{padding:"9px 12px",background:"#f8fafc",borderRadius:7,border:"1.5px solid #e2e8f0",color:"#94a3b8",fontSize:11,display:"flex",alignItems:"center",gap:5}}>
-        ğŸ”’ Only assignee/assignor can request deletion
+        🔒 Only assignee/assignor can request deletion
       </div>}
     </div>
-
-    {/* Request form */}
     {showRequestForm&&<div style={{marginTop:10,padding:"14px",background:"#fff7ed",borderRadius:8,border:"1.5px solid #fed7aa"}}>
-      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:8}}>ğŸ“‹ Submit Delete Request</div>
-      <div style={{fontSize:11,color:"#92400e",marginBottom:10}}>Your request will be sent to Admin for approval. The task remains active until approved. A full audit trail will be kept.</div>
-      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="State your reason for requesting deletion (e.g. duplicate task, created in error, superseded by new ref)..." style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:6,padding:"8px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:72,outline:"none",background:"#fffbf5",boxSizing:"border-box"}}/>
+      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:8}}>📋 Submit Delete Request</div>
+      <div style={{fontSize:11,color:"#92400e",marginBottom:10}}>Your request will be sent to Admin for approval. The task remains active until approved.</div>
+      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="State your reason for requesting deletion…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:6,padding:"8px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:72,outline:"none",background:"#fffbf5",boxSizing:"border-box"}}/>
       <div style={{display:"flex",gap:8,marginTop:8}}>
         <button onClick={submitRequest} style={{padding:"7px 18px",borderRadius:6,border:"none",background:"#f97316",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit Request</button>
         <button onClick={()=>{setShowRequestForm(false);setReason("");}} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
@@ -363,6 +307,7 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
   </div>;
 }
 
+/* ── TASK DETAIL MODAL ── */
 function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange}){
   const [tab,setTab]=useState("info");
   const sm=STATUS_META[task.status]||STATUS_META["Not Started"];
@@ -379,8 +324,8 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   const TABS=[
     {id:"info",label:"Info"},
     {id:"updates",label:`Updates${taskUpdates.length?` (${taskUpdates.length})`:""}`},
-    {id:"messages",label:`Chat${taskMsgs.length?` (${taskMsgs.length})`:""}${urgentMsgs?" ğŸš¨":""}`},
-    {id:"attachments",label:`Files${task.attachments?.length?` (${task.attachments.length})`:""}`,},
+    {id:"messages",label:`Chat${taskMsgs.length?` (${taskMsgs.length})`:""}${urgentMsgs?" 🚨":""}`},
+    {id:"attachments",label:`Files${task.attachments?.length?` (${task.attachments.length})`:""}`},
   ];
   const row=(label,val)=><div style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f1f5f9",alignItems:"flex-start"}}>
     <span style={{fontSize:12,color:"#94a3b8",fontWeight:600,flexShrink:0,marginRight:16,minWidth:110}}>{label}</span>
@@ -389,26 +334,26 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   return<div style={{padding:26}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
       <div style={{flex:1,paddingRight:14}}>
-        {task.isPersonal&&<span style={{fontSize:10,background:"#ede9fe",color:"#7c3aed",borderRadius:4,padding:"2px 8px",fontWeight:700,marginBottom:5,display:"inline-block"}}>ğŸ‘¤ PERSONAL</span>}
+        {task.isPersonal&&<span style={{fontSize:10,background:"#ede9fe",color:"#7c3aed",borderRadius:4,padding:"2px 8px",fontWeight:700,marginBottom:5,display:"inline-block"}}>👤 PERSONAL</span>}
         <div style={{fontSize:11,color:"#c9a227",fontWeight:800,letterSpacing:"0.1em",marginBottom:3}}>{task.ref}</div>
         <h2 style={{margin:0,fontSize:16,color:"#0f2557",fontWeight:800,lineHeight:1.3}}>{task.task}</h2>
         {proj&&<div style={{fontSize:12,color:"#64748b",marginTop:3}}>{proj.name}</div>}
       </div>
-      <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8",flexShrink:0}}>âœ•</button>
+      <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8",flexShrink:0}}>✕</button>
     </div>
     <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
       <Badge text={task.status} color={sm.color} bg={sm.bg}/><Badge text={pm.label} color={pm.color} bg={pm.color+"18"}/>
-      {assignee&&<Badge text={`ğŸ‘¤ ${assignee.name}`} color="#475569" bg="#f1f5f9"/>}
-      {urgentMsgs>0&&<Badge text={`ğŸš¨ ${urgentMsgs} urgent`} color="#991b1b" bg="#fee2e2"/>}
+      {assignee&&<Badge text={`👤 ${assignee.name}`} color="#475569" bg="#f1f5f9"/>}
+      {urgentMsgs>0&&<Badge text={`🚨 ${urgentMsgs} urgent`} color="#991b1b" bg="#fee2e2"/>}
     </div>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:16}}>
       {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 14px",border:"none",borderBottom:tab===t.id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===t.id?"#0f2557":"#94a3b8",fontSize:12,fontWeight:tab===t.id?800:500,cursor:"pointer"}}>{t.label}</button>)}
     </div>
     {tab==="info"&&<div>
       {row("Ref",task.ref)}{row("Prepared",fmtDate(task.preparedDate))}{row("Due Date",<DueChip date={task.dueDate} time={task.dueTime}/>)}
-      {row("Completed",task.completedDate?<span style={{color:"#166534",fontWeight:600}}>âœ… {fmtDate(task.completedDate)}</span>:"â€”")}
-      {row("Assignor",assignor?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignor.name} size={20}/>{assignor.name}</div>:"â€”")}
-      {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"â€”")}
+      {row("Completed",task.completedDate?<span style={{color:"#166534",fontWeight:600}}>✅ {fmtDate(task.completedDate)}</span>:"–")}
+      {row("Assignor",assignor?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignor.name} size={20}/>{assignor.name}</div>:"–")}
+      {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"–")}
       {ccMembers.length>0&&row("CC",<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>{ccMembers.map(m=><Badge key={m.id} text={m.name} color="#475569" bg="#f1f5f9" small/>)}</div>)}
       {task.remarks&&row("Remarks",task.remarks)}
       {linked.length>0&&<div style={{marginTop:12}}><div style={{fontSize:11,color:"#94a3b8",fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:7}}>Depends On</div>
@@ -431,7 +376,7 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   </div>;
 }
 
-/* â”€â”€ KPI VIEW â”€â”€ */
+/* ── KPI VIEW ── */
 function KPIView({tasks,members,projects,moods}){
   const [kpiBy,setKpiBy]=useState("project");
   const et=tasks.filter(t=>!t.isPersonal).map(t=>{
@@ -449,15 +394,13 @@ function KPIView({tasks,members,projects,moods}){
   const overall=calcStats(et);
   const todayStr=today();
   const todayMoods=Object.entries(moods).filter(([k])=>k.startsWith(todayStr));
-
   return<div style={{padding:24}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-      <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:0}}>ğŸ“Š KPI Analysis</h2>
+      <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:0}}>📊 KPI Analysis</h2>
       <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
         {[["project","By Project"],["assignee","By Assignee"]].map(([v,l])=><button key={v} onClick={()=>setKpiBy(v)} style={{padding:"6px 14px",borderRadius:6,border:"none",background:kpiBy===v?"#0f2557":"transparent",color:kpiBy===v?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>)}
       </div>
     </div>
-    {/* Team mood today */}
     {todayMoods.length>0&&<div style={{background:"#fff",borderRadius:10,padding:"14px 18px",marginBottom:16,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
       <div style={{fontSize:12,fontWeight:800,color:"#0f2557",marginBottom:10,letterSpacing:"0.04em"}}>TEAM MOOD TODAY</div>
       <div style={{display:"flex",gap:12,flexWrap:"wrap"}}>
@@ -468,15 +411,11 @@ function KPIView({tasks,members,projects,moods}){
           if(!member||!mood)return null;
           return<div key={k} style={{display:"flex",alignItems:"center",gap:7,padding:"6px 12px",background:mood.color+"15",borderRadius:8,border:`1.5px solid ${mood.color}40`}}>
             <Avatar name={member.name} size={24} color={mood.color}/>
-            <div>
-              <div style={{fontSize:11,fontWeight:700,color:"#1e293b"}}>{member.name}</div>
-              <div style={{fontSize:13}}>{mood.emoji} {mood.label}</div>
-            </div>
+            <div><div style={{fontSize:11,fontWeight:700,color:"#1e293b"}}>{member.name}</div><div style={{fontSize:13}}>{mood.emoji} {mood.label}</div></div>
           </div>;
         })}
       </div>
     </div>}
-    {/* Overall */}
     <div style={{background:"linear-gradient(135deg,#0a1a42,#0f2557)",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
       <div style={{fontSize:10,color:"#7ba3d4",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}}>Overall</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:10}}>
@@ -495,7 +434,7 @@ function KPIView({tasks,members,projects,moods}){
             <span style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{g.label}</span>
           </div>
           <div style={{display:"flex",gap:7}}>
-            {s.overdue>0&&<Badge text={`âš  ${s.overdue} overdue`} color="#991b1b" bg="#fee2e2" small/>}
+            {s.overdue>0&&<Badge text={`⚠ ${s.overdue} overdue`} color="#991b1b" bg="#fee2e2" small/>}
             <Badge text={`${s.compRate}% done`} color={s.compRate>=80?"#166534":s.compRate>=50?"#92400e":"#991b1b"} bg={s.compRate>=80?"#dcfce7":s.compRate>=50?"#fef3c7":"#fee2e2"} small/>
           </div>
         </div>
@@ -517,8 +456,8 @@ function KPIView({tasks,members,projects,moods}){
   </div>;
 }
 
-/* â”€â”€ ADMIN VIEW â”€â”€ */
-function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest}){
+/* ── ADMIN VIEW ── */
+function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword}){
   const [tab,setTab]=useState("projects");
   const [editProj,setEditProj]=useState(null);
   const [editMember,setEditMember]=useState(null);
@@ -531,11 +470,10 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   const [reviewNote,setReviewNote]=useState("");
   const pendingReqs=deleteRequests.filter(r=>r.status==="pending");
   const allReqs=[...deleteRequests].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-
   return<div style={{padding:26}}>
-    <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>âš™ï¸ Admin Settings</h2>
+    <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>⚙️ Admin Settings</h2>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:18}}>
-      {[["projects","ğŸ“ Projects"],["members","ğŸ‘¥ Members"],["delreqs","ğŸ—‘ Delete Requests"],["audit","ğŸ“‹ Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
+      {[["projects","📁 Projects"],["members","👥 Members"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
     </div>
     {tab==="projects"&&<div>
       <div style={{marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -585,11 +523,12 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
         {!m.active&&<Badge text="Inactive" color="#94a3b8" bg="#f1f5f9" small/>}
         {m.id!==currentUser.id&&<button onClick={()=>setEditMember(m)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Edit</button>}
         {m.id!==currentUser.id&&<button onClick={()=>onUpdateMembers(members.map(x=>x.id===m.id?{...x,active:!x.active}:x))} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:m.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>{m.active?"Deactivate":"Activate"}</button>}
+        {onSetPassword&&<button onClick={()=>onSetPassword(m)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #8b5cf6",background:"#fff",color:"#8b5cf6",fontSize:11,cursor:"pointer"}}>🔑 Password</button>}
       </div>)}
     </div>}
     {tab==="delreqs"&&<div>
       {pendingReqs.length>0&&<div style={{background:"#fef3c7",borderRadius:8,padding:"10px 14px",marginBottom:14,border:"1.5px solid #fbbf24"}}>
-        <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:2}}>â³ {pendingReqs.length} Pending Delete Request{pendingReqs.length>1?"s":""} â€” Action Required</div>
+        <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:2}}>⏳ {pendingReqs.length} Pending Delete Request{pendingReqs.length>1?"s":""} – Action Required</div>
       </div>}
       {allReqs.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:13}}>No delete requests yet.</div>}
       {allReqs.map(r=>{
@@ -602,11 +541,11 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
               <div style={{fontSize:11,fontWeight:700,color:"#c9a227"}}>{task?.ref||r.taskId}</div>
               <div style={{fontSize:13,fontWeight:700,color:"#0f2557"}}>{task?.task||"(task deleted)"}</div>
             </div>
-            <Badge text={r.status==="pending"?"â³ Pending":r.status==="approved"?"âœ… Approved":"âŒ Rejected"} color={r.status==="pending"?"#92400e":r.status==="approved"?"#991b1b":"#166534"} bg={r.status==="pending"?"#fef3c7":r.status==="approved"?"#fee2e2":"#dcfce7"} small/>
+            <Badge text={r.status==="pending"?"⏳ Pending":r.status==="approved"?"✅ Approved":"❌ Rejected"} color={r.status==="pending"?"#92400e":r.status==="approved"?"#991b1b":"#166534"} bg={r.status==="pending"?"#fef3c7":r.status==="approved"?"#fee2e2":"#dcfce7"} small/>
           </div>
-          <div style={{fontSize:12,color:"#475569",marginBottom:4}}><span style={{fontWeight:700}}>Requested by:</span> {requester?.name||"â€”"} Â· {fmtDT(r.timestamp)}</div>
+          <div style={{fontSize:12,color:"#475569",marginBottom:4}}><span style={{fontWeight:700}}>Requested by:</span> {requester?.name||"–"} · {fmtDT(r.timestamp)}</div>
           <div style={{fontSize:12,color:"#475569",marginBottom:6,background:"#f8fafc",padding:"6px 10px",borderRadius:5}}><span style={{fontWeight:700}}>Reason:</span> "{r.reason}"</div>
-          {reviewer&&<div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Reviewed by {reviewer.name} on {fmtDT(r.reviewedAt)}{r.reviewNote?` â€” "${r.reviewNote}"`:""}</div>}
+          {reviewer&&<div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Reviewed by {reviewer.name} on {fmtDT(r.reviewedAt)}{r.reviewNote?` – "${r.reviewNote}"`:""}</div>}
           {r.status==="pending"&&<div>
             {reviewModal===r.id&&<div style={{marginBottom:8}}>
               <textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Add a note (optional)..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:56,outline:"none",boxSizing:"border-box"}}/>
@@ -614,8 +553,8 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
             <div style={{display:"flex",gap:8}}>
               {reviewModal!==r.id&&<button onClick={()=>{setReviewModal(r.id);setReviewNote("");}} style={{padding:"6px 14px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Review</button>}
               {reviewModal===r.id&&<>
-                <button onClick={()=>{onReviewDeleteRequest(r.id,true,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#dc2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>âœ… Approve & Delete</button>
-                <button onClick={()=>{onReviewDeleteRequest(r.id,false,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#166534",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>âŒ Reject Request</button>
+                <button onClick={()=>{onReviewDeleteRequest(r.id,true,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#dc2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>✅ Approve & Delete</button>
+                <button onClick={()=>{onReviewDeleteRequest(r.id,false,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#166534",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>❌ Reject Request</button>
                 <button onClick={()=>setReviewModal(null)} style={{padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
               </>}
             </div>
@@ -624,29 +563,21 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
       })}
     </div>}
     {tab==="audit"&&<div>
-      <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail â€” all creates, updates, deletions and delete request decisions. Read-only.</div>
-      {/* Summary cards */}
+      <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
-        {[
-          {label:"Total Events",n:updates.length,color:"#0f2557"},
-          {label:"System Events",n:updates.filter(u=>u.type==="system").length,color:"#166534"},
-          {label:"User Updates",n:updates.filter(u=>u.type==="comment").length,color:"#1e40af"},
-          {label:"Deletion Events",n:updates.filter(u=>u.text&&u.text.includes("delete")).length,color:"#dc2626"},
-        ].map(s=><div key={s.label} style={{background:"#fff",borderRadius:8,padding:"12px 14px",border:`2px solid ${s.color}20`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+        {[{label:"Total Events",n:updates.length,color:"#0f2557"},{label:"System Events",n:updates.filter(u=>u.type==="system").length,color:"#166534"},{label:"User Updates",n:updates.filter(u=>u.type==="comment").length,color:"#1e40af"},{label:"Deletion Events",n:updates.filter(u=>u.text&&u.text.includes("delete")).length,color:"#dc2626"}].map(s=><div key={s.label} style={{background:"#fff",borderRadius:8,padding:"12px 14px",border:`2px solid ${s.color}20`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:24,fontWeight:900,color:s.color}}>{s.n}</div>
           <div style={{fontSize:10,color:"#64748b",marginTop:3,fontWeight:600}}>{s.label}</div>
         </div>)}
       </div>
-      {/* Audit log */}
       <div style={{maxHeight:480,overflowY:"auto",display:"flex",flexDirection:"column",gap:7}}>
         {[...updates].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp)).map(u=>{
           const author=members.find(m=>m.id===u.authorId)||{name:"System"};
           const task=tasks.find(t=>t.id===u.taskId);
           const isDeletion=u.text&&(u.text.toLowerCase().includes("delete")||u.text.toLowerCase().includes("deleted"));
-          const isApproval=u.text&&u.text.includes("APPROVED");
           const isRejection=u.text&&u.text.includes("REJECTED");
-          const bgColor=isDeletion?"#fff5f5":isApproval?"#fff5f5":isRejection?"#f0fdf4":u.type==="system"?"#f0fdf4":"#f8fafc";
-          const borderColor=isDeletion?"#fecaca":isApproval?"#fecaca":isRejection?"#bbf7d0":u.type==="system"?"#bbf7d0":"#e2e8f0";
+          const bgColor=isDeletion?"#fff5f5":isRejection?"#f0fdf4":u.type==="system"?"#f0fdf4":"#f8fafc";
+          const borderColor=isDeletion?"#fecaca":isRejection?"#bbf7d0":u.type==="system"?"#bbf7d0":"#e2e8f0";
           return<div key={u.id} style={{padding:"10px 14px",background:bgColor,borderRadius:8,border:`1px solid ${borderColor}`}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
               <Avatar name={author.name} size={24} color={u.type==="system"?"#166534":"#0f2557"}/>
@@ -656,7 +587,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
               {isRejection&&<Badge text="REJECT" color="#166534" bg="#dcfce7" small/>}
               <span style={{fontSize:10,color:"#94a3b8",marginLeft:"auto"}}>{fmtDT(u.timestamp)}</span>
             </div>
-            {task&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,paddingLeft:32}}>Task: <span style={{fontWeight:700,color:"#0f2557"}}>{task.ref}</span> â€” {task.task}</div>}
+            {task&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,paddingLeft:32}}>Task: <span style={{fontWeight:700,color:"#0f2557"}}>{task.ref}</span> – {task.task}</div>}
             <div style={{fontSize:12,color:"#374151",lineHeight:1.5,paddingLeft:32,whiteSpace:"pre-wrap"}}>{u.text}</div>
           </div>;
         })}
@@ -666,13 +597,12 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   </div>;
 }
 
-/* â”€â”€ TASK FORM â”€â”€ */
+/* ── TASK FORM ── */
 function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
   const DRAFT_KEY=`tkj_form_draft_${currentUser.id}`;
   const blank={id:uid(),projectId:"",task:"",preparedDate:today(),dueDate:"",dueTime:"18:00",completedDate:"",status:"Not Started",priority:"Medium",assignorId:currentUser.id,assigneeId:"",cc:[],remarks:"",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:nowISO(),createdBy:currentUser.id};
   const [f,setF]=useState(()=>{
     if(initial)return{...blank,...initial,cc:initial?.cc||[],linkedTo:initial?.linkedTo||[],attachments:initial?.attachments||[]};
-    // Recover autosaved draft if exists
     try{const saved=localStorage.getItem(DRAFT_KEY);if(saved){const d=JSON.parse(saved);if(d&&d._autoSaved)return{...blank,...d};}}catch{}
     return blank;
   });
@@ -681,7 +611,6 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
   const upd=(k,v)=>{
     setF(p=>{
       const next={...p,[k]:v};
-      // Auto-save to localStorage every keystroke (no attachments = too large)
       if(!initial)try{localStorage.setItem(DRAFT_KEY,JSON.stringify({...next,attachments:[],_autoSaved:true}));}catch{}
       return next;
     });
@@ -700,32 +629,31 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
     }
     const finalTask={...f,isPersonal,personalOwnerId:isPersonal?currentUser.id:null,projectId:isPersonal?null:f.projectId,status:asDraft?"Draft":f.status};
     if(!initial){finalTask.ref=isPersonal?`PERSONAL-${Date.now()}`:asDraft?`DRAFT-${Date.now()}`:(f.projectId?genRef(projects,f.projectId,tasks):`DRAFT-${Date.now()}`);}
-    clearDraft();
-    onSave(finalTask);
+    clearDraft();onSave(finalTask);
   };
   return<div style={{padding:30}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
       <div>
         <h2 style={{margin:0,fontSize:18,color:"#0f2557",fontWeight:800}}>{initial?"Edit Task":"New Task"}</h2>
-        <p style={{margin:"3px 0 0",fontSize:11,color:"#94a3b8"}}>TKJ Task Monitoring Â· {currentUser.name}</p>
+        <p style={{margin:"3px 0 0",fontSize:11,color:"#94a3b8"}}>TKJ Task Monitoring · {currentUser.name}</p>
       </div>
       {hasDraftRecovery&&!initial&&<div style={{position:"absolute",top:0,left:0,right:0,background:"#fef3c7",padding:"8px 16px",borderRadius:"12px 12px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12}}>
-        <span style={{color:"#92400e",fontWeight:700}}>ğŸ“‹ Unsaved draft recovered â€” continue where you left off?</span>
+        <span style={{color:"#92400e",fontWeight:700}}>📋 Unsaved draft recovered – continue where you left off?</span>
         <div style={{display:"flex",gap:8}}>
           <button onClick={discardDraft} style={{padding:"3px 10px",borderRadius:4,border:"1px solid #fbbf24",background:"#fff",color:"#92400e",fontSize:11,cursor:"pointer"}}>Discard</button>
           <button onClick={clearDraft} style={{padding:"3px 10px",borderRadius:4,border:"none",background:"#92400e",color:"#fff",fontSize:11,cursor:"pointer"}}>Keep</button>
         </div>
       </div>}
-      <button onClick={onCancel} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8"}}>âœ•</button>
+      <button onClick={onCancel} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8"}}>✕</button>
     </div>
     <div style={{display:"flex",gap:8,marginBottom:18,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1.5px solid #e2e8f0"}}>
-      <button onClick={()=>setIsPersonal(false)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:!isPersonal?"#0f2557":"transparent",color:!isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>ğŸ“ Project Task</button>
-      <button onClick={()=>setIsPersonal(true)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:isPersonal?"#8b5cf6":"transparent",color:isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>ğŸ‘¤ Personal Task</button>
+      <button onClick={()=>setIsPersonal(false)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:!isPersonal?"#0f2557":"transparent",color:!isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>📁 Project Task</button>
+      <button onClick={()=>setIsPersonal(true)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:isPersonal?"#8b5cf6":"transparent",color:isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>👤 Personal Task</button>
       {isPersonal&&<span style={{fontSize:11,color:"#8b5cf6",fontWeight:600,alignSelf:"center"}}>Only visible to you</span>}
     </div>
     <div style={{display:"flex",flexDirection:"column",gap:15}}>
-      {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">â€” Select Project â€”</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
-      <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation â€“ Civil Works"/></div>
+      {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">– Select Project –</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
+      <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation – Civil Works"/></div>
       <div style={r2}>
         <div><label style={lbl}>Prepared Date</label><input type="date" style={inp} value={f.preparedDate} onChange={e=>upd("preparedDate",e.target.value)}/></div>
         <div>
@@ -747,7 +675,7 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
         <Sel label="Priority" value={f.priority} onChange={v=>upd("priority",v)} options={Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}/>
         <Sel label="Assignor" value={f.assignorId} onChange={v=>upd("assignorId",v)} options={members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}/>
       </div>
-      <Sel label="Assignee" value={f.assigneeId} onChange={v=>upd("assigneeId",v)} options={[<option key="" value="">â€” Select Assignee â€”</option>,...members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}{m.role==="admin"?" (Admin)":""}</option>)]}/>
+      <Sel label="Assignee" value={f.assigneeId} onChange={v=>upd("assigneeId",v)} options={[<option key="" value="">– Select Assignee –</option>,...members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}{m.role==="admin"?" (Admin)":""}</option>)]}/>
       {!isPersonal&&<MemberPicker label="CC (Copy To)" selected={f.cc} onChange={v=>upd("cc",v)} members={members} excludeIds={[f.assigneeId].filter(Boolean)}/>}
       <div><label style={lbl}>Remarks / Notes</label><textarea style={{...inp,resize:"vertical",minHeight:56}} value={f.remarks} onChange={e=>upd("remarks",e.target.value)}/></div>
       <div><label style={lbl}>Attachments</label><AttachmentPanel attachments={f.attachments} onChange={v=>upd("attachments",v)}/></div>
@@ -756,7 +684,7 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
         <div style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:10,display:"flex",flexWrap:"wrap",gap:6,background:"#f8fafc"}}>
           {tasks.filter(t=>t.id!==f.id&&!t.isPersonal).map(t=>{const on=f.linkedTo.includes(t.id);return<button key={t.id} onClick={()=>upd("linkedTo",on?f.linkedTo.filter(x=>x!==t.id):[...f.linkedTo,t.id])}
             style={{padding:"4px 9px",borderRadius:5,border:`1.5px solid ${on?"#0f2557":"#e2e8f0"}`,background:on?"#0f2557":"#fff",color:on?"#fff":"#475569",fontSize:11,cursor:"pointer",fontWeight:on?700:400}}>
-            {t.ref} â€“ {t.task.slice(0,18)}{t.task.length>18?"â€¦":""}
+            {t.ref} – {t.task.slice(0,18)}{t.task.length>18?"…":""}
           </button>;})}
         </div>
       </div>}
@@ -764,7 +692,7 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
     <div style={{display:"flex",gap:12,marginTop:22,justifyContent:"flex-end"}}>
       <button onClick={onCancel} style={{padding:"10px 22px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancel</button>
       {!initial&&<button onClick={()=>handleSave(true)} style={{padding:"10px 22px",borderRadius:7,border:"1.5px solid #8b5cf6",background:"#fff",color:"#8b5cf6",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-        ğŸ’¾ Save Draft
+        💾 Save Draft
       </button>}
       <button onClick={()=>handleSave(false)} style={{padding:"10px 26px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px rgba(15,37,87,0.3)"}}>
         {initial?"Update Task":"Add Task"}
@@ -773,14 +701,14 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
   </div>;
 }
 
-/* â”€â”€ NOTIFICATION PANEL â”€â”€ */
+/* ── NOTIFICATION PANEL ── */
 function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"?"};
   const getTask=(id)=>tasks.find(t=>t.id===id);
-  return<div className="notif-panel" style={{position:"absolute",top:"100%",right:0,width:340,background:"#fff",borderRadius:10,boxShadow:"0 8px 32px rgba(10,20,60,0.18)",border:"1.5px solid #e2e8f0",zIndex:500,overflow:"hidden",marginTop:4}}>
+  return<div style={{position:"absolute",top:"100%",right:0,width:340,background:"#fff",borderRadius:10,boxShadow:"0 8px 32px rgba(10,20,60,0.18)",border:"1.5px solid #e2e8f0",zIndex:500,overflow:"hidden",marginTop:4}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#0f2557"}}>
-      <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>ğŸ”” Notifications</span>
-      <button onClick={onClose} style={{background:"none",border:"none",color:"#7ba3d4",fontSize:16,cursor:"pointer"}}>âœ•</button>
+      <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>🔔 Notifications</span>
+      <button onClick={onClose} style={{background:"none",border:"none",color:"#7ba3d4",fontSize:16,cursor:"pointer"}}>✕</button>
     </div>
     <div style={{maxHeight:380,overflowY:"auto"}}>
       {notifs.length===0&&<div style={{padding:"28px 0",textAlign:"center",color:"#94a3b8",fontSize:13}}>All caught up! No new notifications.</div>}
@@ -796,14 +724,14 @@ function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
             <Avatar name={author.name} size={28}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:12,fontWeight:700,color:"#1e293b"}}>
-                {n.urgent&&"ğŸš¨ "}<span style={{color:"#0f2557"}}>{author.name}</span>
+                {n.urgent&&"🚨 "}<span style={{color:"#0f2557"}}>{author.name}</span>
                 {n.type==="message"?" sent a message":" posted an update"}
               </div>
               {task&&<div style={{fontSize:11,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.task}</div>}
               {proj&&<div style={{fontSize:10,color:"#94a3b8"}}>{proj.name}</div>}
               <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{fmtDT(n.timestamp)}</div>
             </div>
-            {n.urgent&&<span style={{fontSize:16}}>ğŸš¨</span>}
+            {n.urgent&&<span style={{fontSize:16}}>🚨</span>}
           </div>
         </div>;
       })}
@@ -814,8 +742,7 @@ function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
   </div>;
 }
 
-
-/* â”€â”€ RESPONSIVE TASK TABLE â”€â”€ */
+/* ── RESPONSIVE TASK TABLE ── */
 function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,projects,getMember,getProject,STATUS_META,PRIORITY_META,fmtDate,DueChip,Badge,Avatar,clearFilters,activeFiltersCount,onOpenTask}){
   const [isMobile,setIsMobile]=useState(window.innerWidth<768);
   useEffect(()=>{
@@ -823,14 +750,12 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
     window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h);
   },[]);
 
-  // â”€â”€ MOBILE CARD VIEW â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if(isMobile){
     if(filtered.length===0)return<div style={{padding:"40px 0",textAlign:"center",color:"#94a3b8"}}>
-      <div style={{fontSize:32,marginBottom:8}}>ğŸ“‹</div>
+      <div style={{fontSize:32,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
       {activeFiltersCount>0&&<button onClick={clearFilters} style={{marginTop:10,padding:"6px 14px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Clear Filters</button>}
     </div>;
-
     return<div style={{display:"flex",flexDirection:"column",gap:8}}>
       {filtered.map(t=>{
         const sm=STATUS_META[t.status]||STATUS_META["Not Started"];
@@ -844,33 +769,28 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
         const hasNotif=notifications.some(n=>n.taskId===t.id);
         const hasLinks=t.linkedTo?.length>0||enriched.some(x=>x.linkedTo?.includes(t.id));
         return<div key={t.id} onClick={()=>onOpenTask(t)}
-          style={{background:"#fff",borderRadius:10,padding:"12px 14px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",border:`1.5px solid ${hasNotif?"#fbbf24":"#e2e8f0"}`,cursor:"pointer",borderLeft:`4px solid ${sm.dot}`}}>
-          {/* Row 1: Ref + Status + Priority */}
+          style={{background:"#fff",borderRadius:10,padding:"12px 14px",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",border:`1.5px solid ${hasNotif?"#fbbf24":"#e2e8f0"}`,cursor:"pointer",borderLeft:`4px solid ${sm.dot||"#94a3b8"}`}}>
           <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6,flexWrap:"wrap"}}>
             <span style={{fontSize:11,fontWeight:800,color:"#c9a227"}}>{t.ref}</span>
             <Badge text={t.status} color={sm.color} bg={sm.bg} small/>
             <span style={{fontSize:10,fontWeight:700,color:pm.color,marginLeft:"auto"}}>{pm.label}</span>
-            {urgentMsg>0&&<span style={{fontSize:11}}>ğŸš¨</span>}
+            {urgentMsg>0&&<span style={{fontSize:11}}>🚨</span>}
           </div>
-          {/* Row 2: Task name â€” FULL TEXT WRAPPED */}
           <div style={{fontSize:13,fontWeight:700,color:"#0f2557",lineHeight:1.4,marginBottom:6,wordBreak:"break-word"}}>
-            {hasLinks&&<span style={{fontSize:11,marginRight:4}}>ğŸ”—</span>}{t.task}
+            {hasLinks&&<span style={{fontSize:11,marginRight:4}}>🔗</span>}{t.task}
           </div>
-          {/* Row 3: Project */}
-          {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:6}}>ğŸ“ {proj.name}</div>}
-          {/* Row 4: Assignor â†’ Assignee */}
+          {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:6}}>📁 {proj.name}</div>}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             {assignor&&<div style={{display:"flex",alignItems:"center",gap:4}}>
               <Avatar name={assignor.name} size={18} color="#94a3b8"/>
               <span style={{fontSize:10,color:"#94a3b8"}}>{assignor.name}</span>
-              <span style={{fontSize:10,color:"#cbd5e1"}}>â†’</span>
+              <span style={{fontSize:10,color:"#cbd5e1"}}>→</span>
             </div>}
             {assignee&&<div style={{display:"flex",alignItems:"center",gap:4}}>
               <Avatar name={assignee.name} size={20} color="#0f2557"/>
               <span style={{fontSize:11,fontWeight:600,color:"#1e293b"}}>{assignee.name}</span>
             </div>}
           </div>
-          {/* Row 5: Due + Completed */}
           <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:6,flexWrap:"wrap"}}>
             <div style={{display:"flex",flexDirection:"column"}}>
               <span style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2}}>Due</span>
@@ -878,21 +798,19 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             </div>
             {t.completedDate&&<div style={{display:"flex",flexDirection:"column"}}>
               <span style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2}}>Completed</span>
-              <span style={{fontSize:10,color:"#166534",fontWeight:600}}>âœ… {fmtDate(t.completedDate)}</span>
+              <span style={{fontSize:10,color:"#166534",fontWeight:600}}>✅ {fmtDate(t.completedDate)}</span>
             </div>}
           </div>
-          {/* Row 6: Chat + Files badges */}
           {(msgCount>0||fileCount>0)&&<div style={{display:"flex",gap:8}}>
-            {msgCount>0&&<span style={{fontSize:11,color:urgentMsg?"#dc2626":"#3b82f6",fontWeight:700}}>ğŸ’¬ {msgCount}</span>}
-            {fileCount>0&&<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>ğŸ“ {fileCount}</span>}
+            {msgCount>0&&<span style={{fontSize:11,color:urgentMsg?"#dc2626":"#3b82f6",fontWeight:700}}>💬 {msgCount}</span>}
+            {fileCount>0&&<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>📎 {fileCount}</span>}
           </div>}
         </div>;
       })}
     </div>;
   }
 
-  // â”€â”€ DESKTOP TABLE VIEW (with resizable columns) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const COL_NAMES=["Ref","Project","Task / Doc","Assignee","Due Date","Completed","Status","Priority","ğŸ’¬","ğŸ“"];
+  const COL_NAMES=["Ref","Project","Task / Doc","Assignee","Due Date","Completed","Status","Priority","💬","📎"];
   const COL_MIN=[60,70,150,70,90,90,75,50,30,30];
   const COL_DEF=[100,130,240,110,110,120,88,58,36,36];
   const [widths,setWidths]=useState(()=>{try{const s=localStorage.getItem("tkj_col_widths");return s?JSON.parse(s):COL_DEF;}catch{return COL_DEF;}});
@@ -902,17 +820,8 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
     e.preventDefault();e.stopPropagation();
     const startX=e.touches?e.touches[0].clientX:e.clientX;
     resizing.current={idx,startX,startW:widths[idx]};
-    const onMove=(ev)=>{
-      if(!resizing.current)return;
-      const x=ev.touches?ev.touches[0].clientX:ev.clientX;
-      setWidths(prev=>{const n=[...prev];n[resizing.current.idx]=Math.max(COL_MIN[resizing.current.idx],resizing.current.startW+(x-resizing.current.startX));return n;});
-    };
-    const onEnd=()=>{
-      if(resizing.current){setWidths(prev=>{saveWidths(prev);return prev;});}
-      resizing.current=null;
-      window.removeEventListener("mousemove",onMove);window.removeEventListener("touchmove",onMove);
-      window.removeEventListener("mouseup",onEnd);window.removeEventListener("touchend",onEnd);
-    };
+    const onMove=(ev)=>{if(!resizing.current)return;const x=ev.touches?ev.touches[0].clientX:ev.clientX;setWidths(prev=>{const n=[...prev];n[resizing.current.idx]=Math.max(COL_MIN[resizing.current.idx],resizing.current.startW+(x-resizing.current.startX));return n;});};
+    const onEnd=()=>{if(resizing.current){setWidths(prev=>{saveWidths(prev);return prev;});}resizing.current=null;window.removeEventListener("mousemove",onMove);window.removeEventListener("touchmove",onMove);window.removeEventListener("mouseup",onEnd);window.removeEventListener("touchend",onEnd);};
     window.addEventListener("mousemove",onMove);window.addEventListener("touchmove",onMove,{passive:false});
     window.addEventListener("mouseup",onEnd);window.addEventListener("touchend",onEnd);
   };
@@ -928,7 +837,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
     <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{minWidth:totalW}}>
         <div style={{display:"grid",gridTemplateColumns:gridTemplate,columnGap:8,background:"#0f2557",padding:"8px 14px",userSelect:"none"}}>
-          {COL_NAMES.map((h,i)=><div key={h} style={{position:"relative",display:"flex",alignItems:"center",overflow:"hidden"}}>
+          {COL_NAMES.map((h,i)=><div key={i} style={{position:"relative",display:"flex",alignItems:"center",overflow:"hidden"}}>
             <span style={{fontSize:9,fontWeight:800,color:"#7ba3d4",letterSpacing:"0.06em",textTransform:"uppercase",overflow:"hidden",whiteSpace:"nowrap",flex:1}}>{h}</span>
             {i<COL_NAMES.length-1&&<div onMouseDown={e=>startResize(e,i)} onTouchStart={e=>startResize(e,i)}
               style={{position:"absolute",right:-4,top:0,bottom:0,width:9,cursor:"col-resize",zIndex:10,display:"flex",alignItems:"center",justifyContent:"center"}}>
@@ -937,7 +846,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
           </div>)}
         </div>
         {filtered.length===0&&<div style={{padding:"48px 0",textAlign:"center",color:"#94a3b8"}}>
-          <div style={{fontSize:32,marginBottom:8}}>ğŸ“‹</div><div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
+          <div style={{fontSize:32,marginBottom:8}}>📋</div><div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
         </div>}
         {filtered.map((t,i)=>{
           const sm=STATUS_META[t.status]||STATUS_META["Not Started"];const pm=PRIORITY_META[t.priority]||PRIORITY_META["Medium"];
@@ -950,24 +859,22 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
             onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":"#f8fafc"}>
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,fontWeight:700,color:"#c9a227",wordBreak:"break-all"}}>{t.ref}</div></div>
-            <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"ğŸ‘¤ Personal":proj?.name||"â€”"}</div></div>
+            <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"👤 Personal":proj?.name||"–"}</div></div>
             <div style={{overflow:"hidden"}}>
               <div style={{display:"flex",gap:3,alignItems:"flex-start"}}>
-                {hasLinks&&<span style={{fontSize:9,flexShrink:0,marginTop:1}}>ğŸ”—</span>}
+                {hasLinks&&<span style={{fontSize:9,flexShrink:0,marginTop:1}}>🔗</span>}
                 <div><div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
                   {getMember(t.assignorId)&&<div style={{fontSize:9,color:"#94a3b8",marginTop:1}}>by {getMember(t.assignorId)?.name}</div>}
                 </div>
               </div>
             </div>
-            <div style={{overflow:"hidden"}}>
-              {assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}
-            </div>
+            <div style={{overflow:"hidden"}}>{assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}</div>
             <div style={{overflow:"hidden"}}><DueChip date={t.dueDate} time={t.dueTime}/></div>
-            <div style={{overflow:"hidden"}}>{t.completedDate?<span style={{fontSize:10,color:"#166534",fontWeight:600,wordBreak:"break-word"}}>âœ… {fmtDate(t.completedDate)}</span>:<span style={{color:"#d1d5db",fontSize:10}}>â€”</span>}</div>
+            <div style={{overflow:"hidden"}}>{t.completedDate?<span style={{fontSize:10,color:"#166534",fontWeight:600,wordBreak:"break-word"}}>✅ {fmtDate(t.completedDate)}</span>:<span style={{color:"#d1d5db",fontSize:10}}>–</span>}</div>
             <div style={{overflow:"hidden"}}><Badge text={t.status} color={sm.color} bg={sm.bg} small/></div>
             <div><span style={{fontSize:10,fontWeight:700,color:pm.color}}>{pm.label}</span></div>
-            <div style={{textAlign:"center"}}>{msgCount>0?<span style={{fontSize:11,fontWeight:700,color:urgentMsg?"#dc2626":"#3b82f6"}}>{urgentMsg?"ğŸš¨":""}{msgCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>â€”</span>}</div>
-            <div style={{textAlign:"center"}}>{fileCount>0?<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>ğŸ“{fileCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>â€”</span>}</div>
+            <div style={{textAlign:"center"}}>{msgCount>0?<span style={{fontSize:11,fontWeight:700,color:urgentMsg?"#dc2626":"#3b82f6"}}>{urgentMsg?"🚨":""}{msgCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>–</span>}</div>
+            <div style={{textAlign:"center"}}>{fileCount>0?<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>📎{fileCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>–</span>}</div>
           </div>;
         })}
       </div>
@@ -975,10 +882,8 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
   </div>;
 }
 
-/* â”€â”€ MAIN APP â”€â”€ */
-
-/* â”€â”€ CONFIG SCREEN â”€â”€ */
-function ConfigScreen({onConnected}) {
+/* ── CONFIG SCREEN ── */
+function ConfigScreen({onConnected}){
   const [url,setUrl]=useState(LS.get("sb_url")||"");
   const [key,setKey]=useState(LS.get("sb_key")||"");
   const [loading,setLoading]=useState(false);
@@ -997,18 +902,18 @@ function ConfigScreen({onConnected}) {
     setLoading(false);
   };
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"11px 14px",fontSize:13,fontFamily:"inherit",outline:"none",background:"#f8fafc",boxSizing:"border-box",color:"#1e293b"};
-  return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"#fff",borderRadius:16,padding:36,width:"min(480px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <img src={TKJ_LOGO} alt="TKJ" style={{height:70,objectFit:"contain",marginBottom:14}}/>
-        <h2 style={{margin:0,fontSize:20,color:"#0f2557",fontWeight:800}}>â˜ï¸ Cloud Database Setup</h2>
+        <h2 style={{margin:0,fontSize:20,color:"#0f2557",fontWeight:800}}>☁️ Cloud Database Setup</h2>
         <p style={{margin:"6px 0 0",fontSize:13,color:"#64748b"}}>Connect Supabase for real-time team sync</p>
       </div>
       <div style={{background:"#f0f9ff",borderRadius:8,padding:"12px 14px",marginBottom:20,border:"1px solid #bae6fd"}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#0369a1",marginBottom:4}}>ğŸ“‹ Where to find these:</div>
+        <div style={{fontSize:12,fontWeight:700,color:"#0369a1",marginBottom:4}}>📋 Where to find these:</div>
         <div style={{fontSize:11,color:"#0369a1",lineHeight:1.8}}>
-          1. Go to <strong>supabase.com</strong> â†’ your project<br/>
-          2. Click <strong>Project Settings</strong> (bottom-left gear icon)<br/>
+          1. Go to <strong>supabase.com</strong> → your project<br/>
+          2. Click <strong>Project Settings</strong> (gear icon)<br/>
           3. Click <strong>API</strong> tab<br/>
           4. Copy <strong>Project URL</strong> and <strong>anon public</strong> key
         </div>
@@ -1022,9 +927,9 @@ function ConfigScreen({onConnected}) {
           <label style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",display:"block",marginBottom:5}}>Anon / Public Key</label>
           <input style={{...inp,fontFamily:"monospace",fontSize:11}} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."/>
         </div>
-        {err&&<div style={{padding:"10px 14px",background:"#fee2e2",borderRadius:7,color:"#991b1b",fontSize:12,fontWeight:600}}>âš ï¸ {err}</div>}
+        {err&&<div style={{padding:"10px 14px",background:"#fee2e2",borderRadius:7,color:"#991b1b",fontSize:12,fontWeight:600}}>⚠️ {err}</div>}
         <button onClick={connect} disabled={loading} style={{padding:"12px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:14,fontWeight:700,cursor:loading?"default":"pointer",opacity:loading?0.7:1}}>
-          {loading?"â³ Connectingâ€¦":"ğŸ”Œ Connect to Database"}
+          {loading?"⏳ Connecting…":"🔌 Connect to Database"}
         </button>
       </div>
       <p style={{textAlign:"center",fontSize:10,color:"#cbd5e1",marginTop:20}}>TKJ Project Management Sdn Bhd (1676211-U)</p>
@@ -1032,8 +937,8 @@ function ConfigScreen({onConnected}) {
   </div>;
 }
 
-/* â”€â”€ PASSWORD MODAL â”€â”€ */
-function PasswordModal({member,onSuccess,onBack}) {
+/* ── PASSWORD MODAL ── */
+function PasswordModal({member,onSuccess,onBack}){
   const [pw,setPw]=useState("");
   const [err,setErr]=useState("");
   const [loading,setLoading]=useState(false);
@@ -1046,7 +951,7 @@ function PasswordModal({member,onSuccess,onBack}) {
     else{setErr("Incorrect password. Please try again.");setPw("");}
     setLoading(false);
   };
-  return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+  return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{background:"#fff",borderRadius:16,padding:36,width:"min(380px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
       <div style={{textAlign:"center",marginBottom:24}}>
         <img src={TKJ_LOGO} alt="TKJ" style={{height:56,objectFit:"contain",marginBottom:12}}/>
@@ -1061,23 +966,23 @@ function PasswordModal({member,onSuccess,onBack}) {
           onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Password" autoFocus
           style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"11px 44px 11px 14px",fontSize:14,fontFamily:"inherit",outline:"none",background:"#f8fafc",boxSizing:"border-box"}}/>
         <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:16}}>
-          {show?"ğŸ™ˆ":"ğŸ‘ï¸"}
+          {show?"🙈":"👁️"}
         </button>
       </div>
-      {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12,fontWeight:600,marginBottom:12}}>âš ï¸ {err}</div>}
+      {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12,fontWeight:600,marginBottom:12}}>⚠️ {err}</div>}
       <button onClick={submit} disabled={loading} style={{width:"100%",padding:"11px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:10}}>
-        {loading?"â³ Verifyingâ€¦":"ğŸ”“ Login"}
+        {loading?"⏳ Verifying…":"🔓 Login"}
       </button>
       <button onClick={onBack} style={{width:"100%",padding:"8px",borderRadius:7,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,cursor:"pointer"}}>
-        â† Back to member list
+        ← Back to member list
       </button>
       <p style={{textAlign:"center",fontSize:10,color:"#94a3b8",marginTop:14}}>Forgotten password? Contact your Admin to reset.</p>
     </div>
   </div>;
 }
 
-/* â”€â”€ SET PASSWORD MODAL (Admin only) â”€â”€ */
-function SetPasswordModal({member,onSave,onClose}) {
+/* ── SET PASSWORD MODAL ── */
+function SetPasswordModal({member,onSave,onClose}){
   const [pw,setPw]=useState("");
   const [pw2,setPw2]=useState("");
   const [loading,setLoading]=useState(false);
@@ -1092,25 +997,25 @@ function SetPasswordModal({member,onSave,onClose}) {
     setLoading(false);onClose();
   };
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",background:"#f8fafc",boxSizing:"border-box"};
-  return <div style={{position:"fixed",inset:0,background:"rgba(10,20,50,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
+  return<div style={{position:"fixed",inset:0,background:"rgba(10,20,50,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
     <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,padding:28,width:"min(380px,95vw)",boxShadow:"0 24px 80px rgba(0,0,0,0.3)"}}>
-      <h3 style={{margin:"0 0 6px",fontSize:16,color:"#0f2557",fontWeight:800}}>ğŸ”‘ Set Password â€” {member.name}</h3>
-      <p style={{fontSize:12,color:"#64748b",marginBottom:18}}>Only Admins can set or reset passwords. Member cannot change their own password.</p>
+      <h3 style={{margin:"0 0 6px",fontSize:16,color:"#0f2557",fontWeight:800}}>🔑 Set Password – {member.name}</h3>
+      <p style={{fontSize:12,color:"#64748b",marginBottom:18}}>Only Admins can set or reset passwords.</p>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div style={{position:"relative"}}>
           <label style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",display:"block",marginBottom:4}}>New Password (min 6 chars)</label>
           <input type={show?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} style={{...inp,paddingRight:40}}/>
-          <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,bottom:8,background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:14}}>{show?"ğŸ™ˆ":"ğŸ‘ï¸"}</button>
+          <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,bottom:8,background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:14}}>{show?"🙈":"👁️"}</button>
         </div>
         <div>
           <label style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",display:"block",marginBottom:4}}>Confirm Password</label>
           <input type={show?"text":"password"} value={pw2} onChange={e=>setPw2(e.target.value)} style={inp}/>
         </div>
-        {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12}}>âš ï¸ {err}</div>}
+        {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12}}>⚠️ {err}</div>}
         <div style={{display:"flex",gap:10}}>
           <button onClick={onClose} style={{flex:1,padding:"9px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:13,cursor:"pointer"}}>Cancel</button>
           <button onClick={save} disabled={loading} style={{flex:2,padding:"9px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {loading?"Savingâ€¦":"âœ… Save Password"}
+            {loading?"Saving…":"✅ Save Password"}
           </button>
         </div>
       </div>
@@ -1118,9 +1023,9 @@ function SetPasswordModal({member,onSave,onClose}) {
   </div>;
 }
 
-/* â”€â”€ MAIN CLOUD APP â”€â”€ */
-function App() {
-  const [dbReady,setDbReady]=useState(false); // Will be set true after db check
+/* ── MAIN APP ── */
+function App(){
+  const [dbReady,setDbReady]=useState(false);
   const [currentUserId,setCurrentUserId]=useState(()=>LS.get("tkj_session_user"));
   const [passwordTarget,setPasswordTarget]=useState(null);
   const [tasks,setTasks]=useState([]);
@@ -1148,15 +1053,9 @@ function App() {
   const updF=(k,v)=>setFilters(p=>({...p,[k]:v}));
   const setSort=(k,d)=>{setSortKey(k);setSortDir(d);LS.set("tkj_sort_key",k);LS.set("tkj_sort_dir",d);};
 
-  /* Init DB */
-  useEffect(()=>{
-    // In Vite app, db is pre-configured - just verify connection
-    setDbReady(true);
-  },[]);
+  useEffect(()=>{setDbReady(true);},[]);
 
-  /* Load all data */
   const loadAll=useCallback(async()=>{
-    
     const [mr,pr,tr,ur,msgr,drr]=await Promise.all([
       db.from("members").select("*"),
       db.from("projects").select("*"),
@@ -1175,19 +1074,13 @@ function App() {
   },[]);
 
   const loadMoods=useCallback(async()=>{
-    
     const todayStr=new Date().toISOString().split("T")[0];
     const {data}=await db.from("moods").select("*").eq("mood_date",todayStr);
-    if(data){
-      const map={};
-      data.forEach(r=>{map[`${todayStr}_${r.member_id}`]=r.mood_id;});
-      setMoods(map);
-    }
+    if(data){const map={};data.forEach(r=>{map[`${todayStr}_${r.member_id}`]=r.mood_id;});setMoods(map);}
   },[]);
 
   useEffect(()=>{if(dbReady){loadAll();loadMoods();}},[dbReady]);
 
-  /* Realtime subscriptions */
   useEffect(()=>{
     if(!dbReady)return;
     const ch=db.channel("tkj-rt")
@@ -1207,10 +1100,8 @@ function App() {
   const myMoodObj=currentUser?MOODS.find(m=>m.id===moods[`${today()}_${currentUser.id}`]):null;
 
   const login=(member)=>{
-    setCurrentUserId(member.id);
-    LS.set("tkj_session_user",member.id);
+    setCurrentUserId(member.id);LS.set("tkj_session_user",member.id);
     if(!member.passwordHash){
-      // No password set yet â€” let admin in directly, show warning
       if(member.role==="admin"){setPasswordTarget("mood");}
       else{alert("Your account has no password set. Please ask your Admin to set one.");setCurrentUserId(null);}
       return;
@@ -1219,15 +1110,14 @@ function App() {
   };
   const logout=()=>{setCurrentUserId(null);setPasswordTarget(null);LS.set("tkj_session_user",null);};
 
-  /* Data mutations */
   const saveTask=async(t)=>{
     const row=toTask(t);
     if(tasks.find(x=>x.id===t.id)){await db.from("tasks").update(row).eq("id",t.id);}
     else{
       await db.from("tasks").insert(row);
-      const assigneeName=members.find(m=>m.id===t.assigneeId)?.name||"â€”";
+      const assigneeName=members.find(m=>m.id===t.assigneeId)?.name||"–";
       await db.from("task_updates").insert(toUpdate({id:uid(),taskId:t.id,authorId:currentUserId||"",
-        text:`Task created by ${currentUser?.name||"â€”"}. Assigned to ${assigneeName}. Priority: ${t.priority}. Due: ${fmtDate(t.dueDate)}.`,
+        text:`Task created by ${currentUser?.name||"–"}. Assigned to ${assigneeName}. Priority: ${t.priority}. Due: ${fmtDate(t.dueDate)}.`,
         attachments:[],timestamp:nowISO(),type:"system"}));
     }
     setModal(null);setSelected(null);
@@ -1253,9 +1143,7 @@ function App() {
     if(existing){alert("A delete request is already pending.");return;}
     const req={id:uid(),taskId,requestedBy:currentUserId,reason,timestamp:nowISO(),status:"pending",reviewedBy:null,reviewedAt:null,reviewNote:""};
     await db.from("delete_requests").insert(toDR(req));
-    await addUpdate({id:uid(),taskId,authorId:currentUserId,
-      text:`Delete request by ${currentUser?.name}. Reason: "${reason}". Awaiting Admin approval.`,
-      attachments:[],timestamp:nowISO(),type:"system"});
+    await addUpdate({id:uid(),taskId,authorId:currentUserId,text:`Delete request by ${currentUser?.name}. Reason: "${reason}". Awaiting Admin approval.`,attachments:[],timestamp:nowISO(),type:"system"});
   };
   const reviewDeleteRequest=async(reqId,approved,reviewNote)=>{
     const req=deleteRequests.find(r=>r.id===reqId);if(!req)return;
@@ -1263,13 +1151,9 @@ function App() {
     await db.from("delete_requests").update({status:approved?"approved":"rejected",reviewed_by:currentUserId,reviewed_at:nowISO(),review_note:reviewNote}).eq("id",reqId);
     if(approved){
       await db.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:req.requestedBy,deleted_approved_by:currentUserId}).eq("id",req.taskId);
-      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,
-        text:`âœ… DELETE APPROVED by Admin (${currentUser?.name}). Requested by ${requester?.name||"â€”"}. Reason: "${req.reason}". Note: "${reviewNote||"None"}".`,
-        attachments:[],timestamp:nowISO(),type:"system"});
+      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`✅ DELETE APPROVED by Admin (${currentUser?.name}). Requested by ${requester?.name||"–"}. Reason: "${req.reason}". Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
     }else{
-      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,
-        text:`âŒ DELETE REJECTED by Admin (${currentUser?.name}). Note: "${reviewNote||"None"}".`,
-        attachments:[],timestamp:nowISO(),type:"system"});
+      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`❌ DELETE REJECTED by Admin (${currentUser?.name}). Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
     }
     if(approved){setModal(null);setSelected(null);}
   };
@@ -1282,23 +1166,16 @@ function App() {
     if(projects.find(x=>x.id===p.id)){await db.from("projects").update(toProject(p)).eq("id",p.id);}
     else{await db.from("projects").insert({...toProject(p),id:p.id});}
   };
-  const setMemberPassword=async(memberId,hash)=>{
-    await db.from("members").update({password_hash:hash}).eq("id",memberId);
-  };
+  const setMemberPassword=async(memberId,hash)=>{await db.from("members").update({password_hash:hash}).eq("id",memberId);};
   const saveMood=async(memberId,moodId)=>{
     const todayStr=new Date().toISOString().split("T")[0];
     await db.from("moods").upsert({member_id:memberId,mood_date:todayStr,mood_id:moodId},{onConflict:"member_id,mood_date"});
     setMoods(p=>({...p,[`${todayStr}_${memberId}`]:moodId}));
   };
-  const markNotifsRead=()=>{
-    const seen={...notifSeen,[currentUserId]:nowISO()};
-    setNotifSeen(seen);LS.set("tkj_notif_seen",seen);
-  };
+  const markNotifsRead=()=>{const seen={...notifSeen,[currentUserId]:nowISO()};setNotifSeen(seen);LS.set("tkj_notif_seen",seen);};
 
-  /* Derived state */
   const enriched=useMemo(()=>tasks.map(t=>{
-    if(t.status!=="Completed"&&t.status!=="On Hold"&&t.dueDate&&daysDiff(t.dueDate)<0)return{...t,status:"Overdue"};
-    return t;
+    if(t.status!=="Completed"&&t.status!=="On Hold"&&t.dueDate&&daysDiff(t.dueDate)<0)return{...t,status:"Overdue"};return t;
   }),[tasks]);
 
   const visibleTasks=useMemo(()=>{
@@ -1350,29 +1227,27 @@ function App() {
   const selStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none",cursor:"pointer"};
   const dateStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none"};
 
-  /* â”€â”€ SCREENS â”€â”€ */
-  if(!dbReady)return <ConfigScreen onConnected={()=>setDbReady(true)}/>;
+  if(!dbReady)return<ConfigScreen onConnected={()=>setDbReady(true)}/>;
 
-  if(!loaded)return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+  if(!loaded)return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
     <img src={TKJ_LOGO} alt="TKJ" style={{height:60,objectFit:"contain"}}/>
-    <div style={{color:"#7ba3d4",fontSize:14}}>Loading TKJ Task Monitoringâ€¦</div>
+    <div style={{color:"#7ba3d4",fontSize:14}}>Loading TKJ Task Monitoring…</div>
     <div style={{width:180,height:4,background:"rgba(255,255,255,0.1)",borderRadius:2,overflow:"hidden"}}>
       <div style={{width:"60%",height:"100%",background:"#c9a227",borderRadius:2,animation:"pulse 1.5s infinite"}}/>
     </div>
   </div>;
 
-  /* Mood picker */
   if(passwordTarget==="mood"){
     const user=currentUser;
-    return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{background:"#fff",borderRadius:16,padding:36,width:"min(480px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <img src={TKJ_LOGO} alt="TKJ" style={{height:60,objectFit:"contain",marginBottom:10}}/>
-          <h2 style={{fontSize:18,color:"#0f2557",fontWeight:800,margin:"0 0 4px"}}>Good day, {user?.name}! ğŸ‘‹</h2>
+          <h2 style={{fontSize:18,color:"#0f2557",fontWeight:800,margin:"0 0 4px"}}>Good day, {user?.name}! 👋</h2>
           <p style={{fontSize:13,color:"#64748b",margin:0}}>How are you feeling today?</p>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-          {MOODS.map(m=><button key={m.id} onClick={async()=>{await saveMood(user.id,m.id);setPasswordTarget(null);}} className="mood-btn"
+          {MOODS.map(m=><button key={m.id} onClick={async()=>{await saveMood(user.id,m.id);setPasswordTarget(null);}}
             style={{padding:"14px 8px",borderRadius:10,border:`2px solid ${moods[`${today()}_${user.id}`]===m.id?m.color:"#e2e8f0"}`,background:moods[`${today()}_${user.id}`]===m.id?m.color+"15":"#f8fafc",cursor:"pointer",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
             <span style={{fontSize:26}}>{m.emoji}</span>
             <span style={{fontSize:10,fontWeight:700,color:"#475569"}}>{m.label}</span>
@@ -1383,14 +1258,12 @@ function App() {
     </div>;
   }
 
-  /* Password screen */
   if(passwordTarget&&passwordTarget!=="mood"){
-    return <PasswordModal member={passwordTarget} onSuccess={()=>setPasswordTarget("mood")} onBack={()=>{setPasswordTarget(null);setCurrentUserId(null);LS.set("tkj_session_user",null);}}/>;
+    return<PasswordModal member={passwordTarget} onSuccess={()=>setPasswordTarget("mood")} onBack={()=>{setPasswordTarget(null);setCurrentUserId(null);LS.set("tkj_session_user",null);}}/>;
   }
 
-  /* Login screen */
   if(!currentUser){
-    return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+    return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{background:"#fff",borderRadius:16,padding:40,width:"min(420px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
         <div style={{textAlign:"center",marginBottom:28}}>
           <img src={TKJ_LOGO} alt="TKJ" style={{height:80,objectFit:"contain",marginBottom:16}}/>
@@ -1402,62 +1275,56 @@ function App() {
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {members.filter(m=>m.active).map(m=>{
             const todayMood=moods[`${today()}_${m.id}`];const moodObj=todayMood?MOODS.find(x=>x.id===todayMood):null;
-            return <button key={m.id} onClick={()=>login(m)}
+            return<button key={m.id} onClick={()=>login(m)}
               style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderRadius:8,border:"1.5px solid #e2e8f0",background:"#f8fafc",cursor:"pointer",textAlign:"left"}}
               onMouseEnter={e=>{e.currentTarget.style.background="#eff6ff";e.currentTarget.style.borderColor="#0f2557";}}
               onMouseLeave={e=>{e.currentTarget.style.background="#f8fafc";e.currentTarget.style.borderColor="#e2e8f0";}}>
               <Avatar name={m.name} size={38} color={m.role==="admin"?"#c9a227":"#0f2557"}/>
-              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{m.name}</div><div style={{fontSize:11,color:"#94a3b8"}}>{m.role==="admin"?"Admin":"Member"} Â· {m.email}</div></div>
+              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{m.name}</div><div style={{fontSize:11,color:"#94a3b8"}}>{m.role==="admin"?"Admin":"Member"} · {m.email}</div></div>
               {moodObj&&<span style={{fontSize:22}}>{moodObj.emoji}</span>}
-              <span style={{color:"#94a3b8",fontSize:16}}>ğŸ”’</span>
+              <span style={{color:"#94a3b8",fontSize:16}}>🔒</span>
             </button>;
           })}
         </div>
         <div style={{textAlign:"center",marginTop:16}}>
-          <div style={{fontSize:10,color:"#94a3b8"}}>â˜ï¸ Real-time cloud sync active</div>
+          <div style={{fontSize:10,color:"#94a3b8"}}>☁️ Real-time cloud sync active</div>
         </div>
-        <button onClick={()=>{LS.set("sb_url",null);LS.set("sb_key",null);window.location.reload();}} style={{width:"100%",marginTop:10,padding:"6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:10,cursor:"pointer"}}>âš™ï¸ Change Database Settings</button>
+        <button onClick={()=>{LS.set("sb_url",null);LS.set("sb_key",null);window.location.reload();}} style={{width:"100%",marginTop:10,padding:"6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:10,cursor:"pointer"}}>⚙️ Change Database Settings</button>
       </div>
     </div>;
   }
 
-  /* â”€â”€ MAIN UI â”€â”€ */
-  return <div style={{fontFamily:"'Century Gothic','Trebuchet MS',Tahoma,sans-serif",background:"#f0f4f8",minHeight:"100vh"}}>
+  return<div style={{fontFamily:"'Century Gothic','Trebuchet MS',Tahoma,sans-serif",background:"#f0f4f8",minHeight:"100vh"}}>
     {pwModal&&<SetPasswordModal member={pwModal} onSave={setMemberPassword} onClose={()=>setPwModal(null)}/>}
-
-    {/* HEADER */}
     <div style={{background:"linear-gradient(135deg,#0a1a42 0%,#0f2557 60%,#1a3a7c 100%)",boxShadow:"0 4px 24px rgba(10,26,66,0.4)",position:"sticky",top:0,zIndex:200}}>
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px 5px"}}>
         <img src={TKJ_LOGO} alt="TKJ" style={{height:40,objectFit:"contain",flexShrink:0,filter:"brightness(1.05)"}}/>
         <div style={{borderLeft:"1px solid rgba(255,255,255,0.2)",paddingLeft:12}}>
           <div style={{color:"#c9a227",fontSize:11,fontWeight:900,letterSpacing:"0.12em",textTransform:"uppercase",lineHeight:1.2,whiteSpace:"nowrap"}}>Task Monitoring</div>
-          <div style={{color:"#e2e8f0",fontSize:9,fontWeight:600,marginTop:2,whiteSpace:"nowrap"}}>
-            TKJ Project Management Sdn Bhd
-            <span style={{color:"#94a3b8",fontWeight:400,fontSize:8,marginLeft:6,paddingLeft:6,borderLeft:"1px solid #334155"}}>(1676211-U)</span>
-          </div>
+          <div style={{color:"#e2e8f0",fontSize:9,fontWeight:600,marginTop:2,whiteSpace:"nowrap"}}>TKJ Project Management Sdn Bhd<span style={{color:"#94a3b8",fontWeight:400,fontSize:8,marginLeft:6,paddingLeft:6,borderLeft:"1px solid #334155"}}>(1676211-U)</span></div>
           <div style={{color:"#64748b",fontSize:8,fontStyle:"italic",whiteSpace:"nowrap",marginTop:1}}>Managing Complexity. Delivering Results.</div>
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:narrow?3:5,padding:"4px 14px 8px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-        {[{id:"list",icon:"ğŸ“‹",label:"Tasks"},{id:"kpi",icon:"ğŸ“Š",label:"KPI"},...(isAdmin?[{id:"admin",icon:"âš™ï¸",label:"Admin"}]:[])].map(n=>(
+        {[{id:"list",icon:"📋",label:"Tasks"},{id:"kpi",icon:"📊",label:"KPI"},...(isAdmin?[{id:"admin",icon:"⚙️",label:"Admin"}]:[])].map(n=>(
           <button key={n.id} onClick={()=>setView(n.id)} style={{display:"flex",alignItems:"center",gap:narrow?0:5,padding:narrow?"6px 10px":"6px 14px",borderRadius:6,border:"none",background:view===n.id?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)",color:view===n.id?"#fff":"#7ba3d4",fontSize:narrow?18:12,fontWeight:600,cursor:"pointer",position:"relative"}}>
-            <span>{n.icon}</span>{!narrow&&<span>{n.label}{n.id==="admin"&&pendingDeleteNotifs>0?" ğŸ”´":""}</span>}
-            {narrow&&n.id==="admin"&&pendingDeleteNotifs>0&&<span style={{position:"absolute",top:2,right:2,fontSize:8}}>ğŸ”´</span>}
+            <span>{n.icon}</span>{!narrow&&<span>{n.label}{n.id==="admin"&&pendingDeleteNotifs>0?" 🔴":""}</span>}
+            {narrow&&n.id==="admin"&&pendingDeleteNotifs>0&&<span style={{position:"absolute",top:2,right:2,fontSize:8}}>🔴</span>}
           </button>
         ))}
         <div ref={bellRef} style={{position:"relative"}}>
-          <button onClick={()=>{setShowNotifs(v=>!v);if(!showNotifs)markNotifsRead();}} className={urgentNotifs?"bell-shake":""} style={{position:"relative",padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:notifications.length?"#fbbf24":"#7ba3d4",fontSize:18}}>
-            ğŸ””{(notifications.length+pendingDeleteNotifs)>0&&<span style={{position:"absolute",top:1,right:1,background:urgentNotifs?"#dc2626":pendingDeleteNotifs?"#f97316":"#f59e0b",color:"#fff",borderRadius:"50%",width:15,height:15,fontSize:8,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{(notifications.length+pendingDeleteNotifs)>9?"9+":(notifications.length+pendingDeleteNotifs)}</span>}
+          <button onClick={()=>{setShowNotifs(v=>!v);if(!showNotifs)markNotifsRead();}} style={{position:"relative",padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:notifications.length?"#fbbf24":"#7ba3d4",fontSize:18}}>
+            🔔{(notifications.length+pendingDeleteNotifs)>0&&<span style={{position:"absolute",top:1,right:1,background:urgentNotifs?"#dc2626":pendingDeleteNotifs?"#f97316":"#f59e0b",color:"#fff",borderRadius:"50%",width:15,height:15,fontSize:8,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{(notifications.length+pendingDeleteNotifs)>9?"9+":(notifications.length+pendingDeleteNotifs)}</span>}
           </button>
           {showNotifs&&<NotifPanel notifs={notifications} members={members} tasks={enriched} projects={projects} onClose={()=>setShowNotifs(false)} onOpenTask={(id,tab)=>{openTask(id,tab);setView("list");}}/>}
         </div>
         <div style={{display:"flex",alignItems:"center",gap:narrow?0:6,padding:narrow?"4px 6px":"4px 10px",background:"rgba(255,255,255,0.08)",borderRadius:7,cursor:"pointer"}} onClick={logout}>
           <Avatar name={currentUser.name} size={narrow?22:24} color="#c9a227"/>
-          {!narrow&&<div><div style={{color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>{currentUser.name}{myMoodObj&&<span style={{fontSize:11}}>{myMoodObj.emoji}</span>}</div><div style={{color:"#7ba3d4",fontSize:8}}>{isAdmin?"Admin":"Member"} Â· Logout</div></div>}
+          {!narrow&&<div><div style={{color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>{currentUser.name}{myMoodObj&&<span style={{fontSize:11}}>{myMoodObj.emoji}</span>}</div><div style={{color:"#7ba3d4",fontSize:8}}>{isAdmin?"Admin":"Member"} · Logout</div></div>}
           {narrow&&myMoodObj&&<span style={{fontSize:10,marginLeft:2}}>{myMoodObj.emoji}</span>}
         </div>
         <button onClick={()=>{setSelected(null);setModal("form");}} style={{padding:narrow?"6px 10px":"7px 14px",borderRadius:7,border:"1.5px solid #c9a227",background:"rgba(201,162,39,0.1)",color:"#c9a227",fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
-          {narrow?"ï¼‹":"+ New Task"}
+          {narrow?"＋":"+ New Task"}
         </button>
       </div>
     </div>
@@ -1474,26 +1341,26 @@ function App() {
 
     {view==="list"&&<div style={{padding:"14px 18px"}}>
       <div style={{display:"flex",gap:8,marginBottom:12}}>
-        <button onClick={()=>setShowPersonal(false)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${!showPersonal?"#0f2557":"#e2e8f0"}`,background:!showPersonal?"#0f2557":"#fff",color:!showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ğŸ“ Project Tasks</button>
-        <button onClick={()=>setShowPersonal(true)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${showPersonal?"#8b5cf6":"#e2e8f0"}`,background:showPersonal?"#8b5cf6":"#fff",color:showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>ğŸ‘¤ My Personal</button>
+        <button onClick={()=>setShowPersonal(false)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${!showPersonal?"#0f2557":"#e2e8f0"}`,background:!showPersonal?"#0f2557":"#fff",color:!showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>📁 Project Tasks</button>
+        <button onClick={()=>setShowPersonal(true)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${showPersonal?"#8b5cf6":"#e2e8f0"}`,background:showPersonal?"#8b5cf6":"#fff",color:showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>👤 My Personal</button>
       </div>
       <div style={{background:"#fff",borderRadius:10,padding:"12px 14px",marginBottom:14,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <div style={{position:"relative",flex:"1 1 200px"}}>
-            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:13}}>ğŸ”</span>
-            <input value={filters.search} onChange={e=>updF("search",e.target.value)} placeholder="Search tasks, refâ€¦" style={{...selStyle,paddingLeft:28,width:"100%",boxSizing:"border-box"}}/>
+            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:13}}>🔍</span>
+            <input value={filters.search} onChange={e=>updF("search",e.target.value)} placeholder="Search tasks, ref…" style={{...selStyle,paddingLeft:28,width:"100%",boxSizing:"border-box"}}/>
           </div>
           {!showPersonal&&<select value={filters.project} onChange={e=>updF("project",e.target.value)} style={selStyle}><option value="">All Projects</option>{projects.filter(p=>p.active).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}
           <select value={filters.status} onChange={e=>updF("status",e.target.value)} style={selStyle}><option value="">All Status</option>{Object.keys(STATUS_META).map(s=><option key={s}>{s}</option>)}</select>
           <select value={filters.priority} onChange={e=>updF("priority",e.target.value)} style={selStyle}><option value="">All Priority</option>{Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}</select>
           {!showPersonal&&<select value={filters.assignee} onChange={e=>updF("assignee",e.target.value)} style={selStyle}><option value="">All Assignee</option>{members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
-          {activeFiltersCount>0&&<button onClick={clearFilters} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>âœ• Clear</button>}
+          {activeFiltersCount>0&&<button onClick={clearFilters} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ Clear</button>}
         </div>
         <div style={{display:"flex",gap:10,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
           {[["Due","dueDateFrom","dueDateTo"],["Prepared","preparedFrom","preparedTo"],["Completed","completedFrom","completedTo"]].map(([l,f1,f2])=><div key={l} style={{display:"flex",alignItems:"center",gap:5}}>
             <span style={{fontSize:10,color:"#64748b",fontWeight:700,whiteSpace:"nowrap"}}>{l}:</span>
             <input type="date" value={filters[f1]} onChange={e=>updF(f1,e.target.value)} style={dateStyle}/>
-            <span style={{fontSize:10,color:"#94a3b8"}}>â€“</span>
+            <span style={{fontSize:10,color:"#94a3b8"}}>–</span>
             <input type="date" value={filters[f2]} onChange={e=>updF(f2,e.target.value)} style={dateStyle}/>
           </div>)}
           {[["showDueToday","Due Today"],["showDueWeek","Due This Week"]].map(([k,l])=><button key={k} onClick={()=>updF(k,!filters[k])} style={{padding:"4px 10px",borderRadius:5,border:`1.5px solid ${filters[k]?"#0f2557":"#e2e8f0"}`,background:filters[k]?"#0f2557":"#fff",color:filters[k]?"#fff":"#64748b",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}
@@ -1505,9 +1372,9 @@ function App() {
           <span style={{fontSize:10,color:"#94a3b8"}}>Sort:</span>
           {[{k:"dueDate",l:"Due Date"},{k:"createdAt",l:"Created"},{k:"priority",l:"Priority"},{k:"project",l:"Project"},{k:"status",l:"Status"},{k:"ref",l:"Ref"}].map(s=>{
             const isActive=sortKey===s.k;
-            return <div key={s.k} style={{display:"flex",borderRadius:5,overflow:"hidden",border:`1px solid ${isActive?"#0f2557":"#e2e8f0"}`}}>
-              <button onClick={()=>setSort(s.k,"asc")} style={{padding:"3px 7px",border:"none",borderRight:`1px solid ${isActive?"#1e3a7c":"#e2e8f0"}`,background:isActive&&sortDir==="asc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="asc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="asc"?700:400,cursor:"pointer"}}>{s.l} â†‘</button>
-              <button onClick={()=>setSort(s.k,"desc")} style={{padding:"3px 7px",border:"none",background:isActive&&sortDir==="desc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="desc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="desc"?700:400,cursor:"pointer"}}>â†“</button>
+            return<div key={s.k} style={{display:"flex",borderRadius:5,overflow:"hidden",border:`1px solid ${isActive?"#0f2557":"#e2e8f0"}`}}>
+              <button onClick={()=>setSort(s.k,"asc")} style={{padding:"3px 7px",border:"none",borderRight:`1px solid ${isActive?"#1e3a7c":"#e2e8f0"}`,background:isActive&&sortDir==="asc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="asc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="asc"?700:400,cursor:"pointer"}}>{s.l} ↑</button>
+              <button onClick={()=>setSort(s.k,"desc")} style={{padding:"3px 7px",border:"none",background:isActive&&sortDir==="desc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="desc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="desc"?700:400,cursor:"pointer"}}>↓</button>
             </div>;
           })}
         </div>
@@ -1540,7 +1407,7 @@ function App() {
     </Modal>}
 
     <div style={{textAlign:"center",padding:"14px 0 22px",fontSize:10,color:"#94a3b8"}}>
-      TKJ Project Management Sdn Bhd (1676211-U) Â· {new Date().toLocaleDateString("en-MY",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})} Â· {currentUser.name} {myMoodObj?myMoodObj.emoji:""} Â· â˜ï¸ Cloud Sync
+      TKJ Project Management Sdn Bhd (1676211-U) · {new Date().toLocaleDateString("en-MY",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})} · {currentUser.name} {myMoodObj?myMoodObj.emoji:""} · ☁️ Cloud Sync
     </div>
   </div>;
 }
