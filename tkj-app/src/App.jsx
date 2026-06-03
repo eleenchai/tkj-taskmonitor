@@ -76,17 +76,44 @@ function MemberPicker({label,selected=[],onChange,members,excludeIds=[]}){
   </div>;
 }
 
+/* ── LIGHTBOX VIEWER ── */
+function Lightbox({src,name,onClose}){
+  return<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:9999,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{position:"absolute",top:16,right:16,display:"flex",gap:10}}>
+      <a href={src} download={name} onClick={e=>e.stopPropagation()}
+        style={{padding:"7px 14px",background:"rgba(255,255,255,0.15)",color:"#fff",borderRadius:7,fontSize:12,fontWeight:700,textDecoration:"none",border:"1px solid rgba(255,255,255,0.3)"}}>
+        ⬇ Save
+      </a>
+      <button onClick={onClose} style={{padding:"7px 14px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>✕ Close</button>
+    </div>
+    <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:10,textAlign:"center"}}>{name} · Pinch or scroll to zoom · Tap outside to close</div>
+    <img src={src} alt={name} onClick={e=>e.stopPropagation()}
+      style={{maxWidth:"100%",maxHeight:"85vh",objectFit:"contain",borderRadius:8,boxShadow:"0 8px 40px rgba(0,0,0,0.6)",cursor:"zoom-in"}}/>
+  </div>;
+}
+
 /* ── INLINE FILE DISPLAY ── */
 function InlineFiles({files=[]}){
+  const [lightbox,setLightbox]=useState(null);
   if(!files.length)return null;
-  return<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:6}}>
+  return<div style={{marginTop:8,display:"flex",flexDirection:"column",gap:8}}>
+    {lightbox&&<Lightbox src={lightbox.src} name={lightbox.name} onClose={()=>setLightbox(null)}/>}
     {files.map(f=>{
       const isImg=f.type&&f.type.startsWith("image/");
+      const isPdf=f.type==="application/pdf";
       return<div key={f.id}>
         {isImg
-          ?<img src={f.data} alt={f.name} style={{maxWidth:"100%",maxHeight:220,borderRadius:7,border:"1px solid #e2e8f0",display:"block"}}/>
-          :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"5px 10px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
-            <span style={{fontSize:14}}>{FILE_ICON(f.type)}</span>{f.name} <span style={{color:"#94a3b8"}}>({fmtBytes(f.size)})</span>
+          ?<div style={{cursor:"zoom-in"}} onClick={()=>setLightbox({src:f.data,name:f.name})}>
+            <img src={f.data} alt={f.name} style={{maxWidth:"100%",borderRadius:7,border:"2px solid #e2e8f0",display:"block",objectFit:"contain"}}/>
+            <div style={{fontSize:10,color:"#64748b",marginTop:3,textAlign:"center"}}>🔍 Tap to enlarge · {f.name}</div>
+          </div>
+          :<a href={f.data} target="_blank" rel="noopener noreferrer" download={!isPdf?f.name:undefined}
+            style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
+            <span style={{fontSize:16}}>{FILE_ICON(f.type)}</span>
+            <div style={{minWidth:0}}>
+              <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:220}}>{f.name}</div>
+              <div style={{fontSize:9,color:"#94a3b8"}}>{fmtBytes(f.size)} · {isPdf?"tap to view PDF":"tap to open"}</div>
+            </div>
           </a>}
       </div>;
     })}
@@ -115,11 +142,16 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
       const isImg=f.type&&f.type.startsWith("image/");
       return<div key={f.id} style={{marginBottom:6}}>
         {isImg
-          ?<div style={{position:"relative"}}>
-            <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:200,objectFit:"cover",borderRadius:7,border:"1px solid #e2e8f0",display:"block"}}/>
-            <div style={{position:"absolute",bottom:6,right:6,display:"flex",gap:5}}>
-              <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"rgba(0,0,0,0.6)",color:"#fff",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>⬇</a>
-              {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"rgba(220,38,38,0.8)",color:"#fff",border:"none",borderRadius:4,fontSize:10,fontWeight:700,cursor:"pointer"}}>✕</button>}
+          ?<div>
+            <div style={{cursor:"zoom-in",position:"relative"}} onClick={()=>setLightbox&&setLightbox({src:f.data,name:f.name})}>
+              <img src={f.data} alt={f.name} style={{width:"100%",borderRadius:7,border:"1px solid #e2e8f0",display:"block",objectFit:"contain"}}/>
+            </div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4,padding:"0 2px"}}>
+              <span style={{fontSize:10,color:"#64748b"}}>🔍 {f.name}</span>
+              <div style={{display:"flex",gap:6}}>
+                <a href={f.data} download={f.name} style={{padding:"3px 10px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
+                {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:10,fontWeight:700,borderRadius:4,cursor:"pointer"}}>✕</button>}
+              </div>
             </div>
           </div>
           :<div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",background:"#f8fafc",borderRadius:7,border:"1.5px solid #e2e8f0"}}>
@@ -155,6 +187,7 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
   const [supersedeTarget,setSupersedeTarget]=useState(null); // update being superseded
   const [suggestMode,setSuggestMode]=useState(false); // non-privileged suggest mode
   const [expandedRef,setExpandedRef]=useState(null); // which update's ref chain is expanded
+  const [lightboxItem,setLightboxItem]=useState(null); // lightbox for update images
   const fileRef=useRef();
   const updateRefs=useRef({}); // refs for scrolling to specific updates
 
@@ -246,6 +279,7 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
     onRejectUpdate(suggestion.id);
   };
   return<div>
+    {lightboxItem&&<Lightbox src={lightboxItem.src} name={lightboxItem.name} onClose={()=>setLightboxItem(null)}/>}
     {/* ── UPDATE LIST ── */}
     <div style={{maxHeight:420,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
       {taskUpdates.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No updates yet.</div>}
@@ -329,11 +363,13 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
               const isImg=f.type&&f.type.startsWith("image/");
               return<div key={f.id} style={{marginBottom:6}}>
                 {isImg
-                  ?<div style={{position:"relative",borderRadius:7,overflow:"hidden",border:"1px solid #e2e8f0",maxWidth:320}}>
-                    <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
-                    <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                      <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
-                      <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+                  ?<div>
+                    <img src={f.data} alt={f.name}
+                      onClick={()=>setLightboxItem({src:f.data,name:f.name})}
+                      style={{width:"100%",borderRadius:7,border:"1px solid #e2e8f0",display:"block",objectFit:"contain",cursor:"zoom-in"}}/>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:3}}>
+                      <span style={{fontSize:10,color:"#64748b"}}>🔍 Tap to enlarge · {f.name}</span>
+                      <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
                     </div>
                   </div>
                   :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 11px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
@@ -563,6 +599,7 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   const [savingDue,setSavingDue]=useState(false);
   const [completing,setCompleting]=useState(false);
   const [undoingComplete,setUndoingComplete]=useState(false);
+  const [infoLightbox,setInfoLightbox]=useState(null);
 
   const sm=STATUS_META[task.status]||STATUS_META["Not Started"];
   const pm=PRIORITY_META[task.priority]||PRIORITY_META["Medium"];
@@ -625,6 +662,7 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   </div>;
 
   return<div style={{padding:26}}>
+    {infoLightbox&&<Lightbox src={infoLightbox.src} name={infoLightbox.name} onClose={()=>setInfoLightbox(null)}/>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
       <div style={{flex:1,paddingRight:14}}>
         {task.isPersonal&&<span style={{fontSize:10,background:"#ede9fe",color:"#7c3aed",borderRadius:4,padding:"2px 8px",fontWeight:700,marginBottom:5,display:"inline-block"}}>👤 PERSONAL</span>}
@@ -711,11 +749,13 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
                     const isImg=f.type&&f.type.startsWith("image/");
                     return<div key={f.id}>
                       {isImg
-                        ?<div style={{position:"relative",borderRadius:6,overflow:"hidden",border:"1px solid #e2e8f0"}}>
-                          <img src={f.data} alt={f.name} style={{width:"100%",maxHeight:160,objectFit:"cover",display:"block"}}/>
-                          <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(0,0,0,0.5)",padding:"4px 8px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                            <span style={{fontSize:10,color:"#fff",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
-                            <a href={f.data} download={f.name} style={{color:"#fff",fontSize:10,fontWeight:700,textDecoration:"none",flexShrink:0,marginLeft:8}}>⬇ Save</a>
+                        ?<div>
+                          <img src={f.data} alt={f.name}
+                            onClick={()=>setInfoLightbox({src:f.data,name:f.name})}
+                            style={{width:"100%",borderRadius:6,border:"1px solid #e2e8f0",display:"block",objectFit:"contain",cursor:"zoom-in"}}/>
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:3}}>
+                            <span style={{fontSize:10,color:"#64748b"}}>🔍 Tap to enlarge · {f.name}</span>
+                            <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
                           </div>
                         </div>
                         :<a href={f.data} download={f.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,textDecoration:"none"}}>
