@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const db = createClient(url, key)
+export const db = createClient(url || 'https://placeholder.supabase.co', key || 'placeholder-key')
 
 // ── MAPPERS ──────────────────────────────────────────────────────────────────
 export const fromMember = r => ({id:r.id,name:r.name,role:r.role,email:r.email||'',active:r.active,passwordHash:r.password_hash||''})
