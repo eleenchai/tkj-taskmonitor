@@ -928,10 +928,16 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
   const [newName,setNewName]=useState("");
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
 
+  // Always sort A-Z — no manual reorder
+  const sorted=[...taskTypes].sort((a,b)=>a.name.localeCompare(b.name));
+
   const addType=()=>{
     if(!newName.trim()){alert("Please enter a type name.");return;}
-    if(taskTypes.find(t=>t.name.toLowerCase()===newName.trim().toLowerCase())){alert("Type already exists.");return;}
-    onSave([...taskTypes,{id:uid(),name:newName.trim(),active:true}]);
+    if(taskTypes.find(t=>t.name.toLowerCase()===newName.trim().toLowerCase())){alert("This type already exists.");return;}
+    // Add and auto-sort A-Z
+    const updated=[...taskTypes,{id:uid(),name:newName.trim(),active:true}]
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    onSave(updated);
     setNewName("");
   };
 
@@ -940,30 +946,20 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
   };
 
   const saveEdit=(id,name)=>{
-    if(!name.trim()){alert("Name required.");return;}
-    onSave(taskTypes.map(t=>t.id===id?{...t,name:name.trim()}:t));
+    if(!name.trim()){alert("Name cannot be empty.");return;}
+    if(taskTypes.find(t=>t.id!==id&&t.name.toLowerCase()===name.trim().toLowerCase())){alert("This type already exists.");return;}
+    // Edit and re-sort A-Z
+    const updated=taskTypes.map(t=>t.id===id?{...t,name:name.trim()}:t)
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    onSave(updated);
     setEditItem(null);
   };
 
-  const moveUp=(idx)=>{
-    if(idx===0)return;
-    const arr=[...taskTypes];
-    [arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];
-    onSave(arr);
-  };
-
-  const moveDown=(idx)=>{
-    if(idx===taskTypes.length-1)return;
-    const arr=[...taskTypes];
-    [arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];
-    onSave(arr);
-  };
-
   return<div>
-    <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div>
-        <div style={{fontSize:13,color:"#64748b"}}>Admin-controlled task type categories.</div>
-        <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>These appear in the task form dropdown and filters. Drag to reorder using ↑↓ buttons.</div>
+    <div style={{marginBottom:14}}>
+      <div style={{fontSize:13,color:"#64748b"}}>Admin-controlled task type categories.</div>
+      <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>
+        Always sorted A–Z automatically. Add or rename — list reorders itself. 😊
       </div>
     </div>
 
@@ -975,17 +971,12 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
       <button onClick={addType} style={{padding:"8px 18px",borderRadius:7,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ Add</button>
     </div>
 
-    {/* List */}
+    {/* List — auto A-Z, no reorder buttons */}
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
-      {taskTypes.map((t,idx)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"#fff",borderRadius:7,border:`1.5px solid ${t.active?"#e2e8f0":"#f1f5f9"}`,opacity:t.active?1:0.55}}>
-        {/* Order buttons */}
-        <div style={{display:"flex",flexDirection:"column",gap:1}}>
-          <button onClick={()=>moveUp(idx)} disabled={idx===0} style={{background:"none",border:"none",color:idx===0?"#e2e8f0":"#94a3b8",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▲</button>
-          <button onClick={()=>moveDown(idx)} disabled={idx===taskTypes.length-1} style={{background:"none",border:"none",color:idx===taskTypes.length-1?"#e2e8f0":"#94a3b8",cursor:idx===taskTypes.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▼</button>
-        </div>
-        {/* Number badge */}
+      {sorted.map((t,idx)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:7,border:`1.5px solid ${t.active?"#e2e8f0":"#f1f5f9"}`,opacity:t.active?1:0.55}}>
+        {/* A-Z index badge */}
         <span style={{fontSize:10,color:"#94a3b8",fontWeight:700,minWidth:18,textAlign:"center"}}>{idx+1}</span>
-        {/* Name / edit */}
+        {/* Name / edit inline */}
         {editItem===t.id
           ?<input autoFocus defaultValue={t.name}
               onBlur={e=>saveEdit(t.id,e.target.value)}
@@ -998,15 +989,19 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
         }
         {/* Actions */}
         <div style={{display:"flex",gap:5,flexShrink:0}}>
-          {editItem!==t.id&&<button onClick={()=>setEditItem(t.id)} style={{padding:"3px 9px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>✏️</button>}
-          <button onClick={()=>toggleActive(t.id)} style={{padding:"3px 9px",borderRadius:5,border:`1.5px solid ${t.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:t.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>
+          {editItem!==t.id&&<button onClick={()=>setEditItem(t.id)}
+            style={{padding:"3px 9px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>
+            ✏️ Rename
+          </button>}
+          <button onClick={()=>toggleActive(t.id)}
+            style={{padding:"3px 9px",borderRadius:5,border:`1.5px solid ${t.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:t.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>
             {t.active?"Disable":"Enable"}
           </button>
         </div>
       </div>)}
     </div>
     <div style={{marginTop:10,fontSize:10,color:"#94a3b8",textAlign:"center"}}>
-      {taskTypes.filter(t=>t.active).length} active types · Click ✏️ to rename · Disabled types are hidden from forms
+      {sorted.filter(t=>t.active).length} active types · Click ✏️ Rename to edit · Disabled types hidden from forms
     </div>
   </div>;
 }
@@ -1468,12 +1463,12 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
     </div>;
   }
 
-  const COL_NAMES=["Ref","Project","Task / Doc","Assignee","Due Date","Completed","Status","Priority","💬","📎"];
-  const COL_MIN=[60,70,150,70,90,90,75,50,30,30];
-  const COL_DEF=[100,130,240,110,110,120,88,58,36,36];
-  const [widths,setWidths]=useState(()=>{try{const s=localStorage.getItem("tkj_col_widths");return s?JSON.parse(s):COL_DEF;}catch{return COL_DEF;}});
+  const COL_NAMES=["Ref","Project","Type","Task / Doc","Assignor","Assignee","Due Date","Completed","Status","Priority","💬","📎"];
+  const COL_MIN=[60,70,60,150,70,70,90,90,75,50,30,30];
+  const COL_DEF=[90,110,80,220,90,90,110,110,82,55,34,34];
+  const [widths,setWidths]=useState(()=>{try{const s=localStorage.getItem("tkj_col_widths_v2");return s?JSON.parse(s):COL_DEF;}catch{return COL_DEF;}});
   const resizing=useRef(null);
-  const saveWidths=(w)=>{try{localStorage.setItem("tkj_col_widths",JSON.stringify(w));}catch{}};
+  const saveWidths=(w)=>{try{localStorage.setItem("tkj_col_widths_v2",JSON.stringify(w));}catch{}};
   const startResize=(e,idx)=>{
     e.preventDefault();e.stopPropagation();
     const startX=e.touches?e.touches[0].clientX:e.clientX;
@@ -1516,18 +1511,26 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             style={{display:"grid",gridTemplateColumns:gridTemplate,columnGap:8,padding:"10px 14px",background:i%2===0?"#fff":"#f8fafc",borderBottom:"1px solid #f1f5f9",cursor:"pointer",alignItems:"start",borderLeft:myNotifs?"3px solid #f59e0b":"3px solid transparent"}}
             onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
             onMouseLeave={e=>e.currentTarget.style.background=i%2===0?"#fff":"#f8fafc"}>
+            {/* Ref */}
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,fontWeight:700,color:"#c9a227",wordBreak:"break-all"}}>{t.ref}</div></div>
+            {/* Project */}
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"👤 Personal":proj?.name||"–"}</div></div>
+            {/* Type */}
+            <div style={{overflow:"hidden"}}>
+              {t.taskTypeId&&(taskTypes||[]).length>0
+                ?<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"2px 7px",fontWeight:700,whiteSpace:"nowrap",display:"inline-block"}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||"–"}</span>
+                :<span style={{color:"#d1d5db",fontSize:10}}>–</span>}
+            </div>
+            {/* Task / Doc */}
             <div style={{overflow:"hidden"}}>
               <div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
-              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>
-                {getMember(t.assignorId)&&<span style={{fontSize:9,color:"#94a3b8"}}>by {getMember(t.assignorId)?.name}</span>}
-                {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"1px 8px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||""}</span>}
-            {false&&<span style={{fontSize:9,color:"#1e40af",background:"#dbeafe",borderRadius:3,padding:"1px 5px",fontWeight:600}}>{t.taskType}</span>}
-                {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px"}}>🔗 linked</span>}
-                {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:9,color:"#1e40af",background:"#eff6ff",borderRadius:3,padding:"0px 5px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name}</span>}
-              </div>
+              {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px",marginTop:2,display:"inline-block"}}>🔗 linked</span>}
             </div>
+            {/* Assignor */}
+            <div style={{overflow:"hidden"}}>
+              {getMember(t.assignorId)&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={getMember(t.assignorId).name} size={16} color="#94a3b8"/><span style={{fontSize:10,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{getMember(t.assignorId).name}</span></div>}
+            </div>
+            {/* Assignee */}
             <div style={{overflow:"hidden"}}>{assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}</div>
             <div style={{overflow:"hidden"}}><DueChip date={t.dueDate} time={t.dueTime}/></div>
             <div style={{overflow:"hidden"}}>{t.completedDate?<span style={{fontSize:10,color:"#166534",fontWeight:600,wordBreak:"break-word"}}>✅ {fmtDate(t.completedDate)}</span>:<span style={{color:"#d1d5db",fontSize:10}}>–</span>}</div>
