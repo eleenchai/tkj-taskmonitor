@@ -595,7 +595,7 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
 }
 
 /* ── TASK DETAIL MODAL ── */
-function TaskDetailModal({task,tasks,members,projects,taskTypes,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
+function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [tab,setTab]=useState("info");
   const [editingDueDate,setEditingDueDate]=useState(false);
   const [newDueDate,setNewDueDate]=useState(task.dueDate||"");
@@ -729,6 +729,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,updates,messages
       {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"–")}
       {ccMembers.length>0&&row("CC",<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>{ccMembers.map(m=><Badge key={m.id} text={m.name} color="#475569" bg="#f1f5f9" small/>)}</div>)}
       {task.taskTypeId&&row("Task Type",<span style={{padding:"2px 10px",background:"#eff6ff",color:"#1e40af",borderRadius:5,fontSize:12,fontWeight:700}}>{taskTypes?.find(tt=>tt.id===task.taskTypeId)?.name||"–"}</span>)}
+      {task.companyId&&row("Company",<span style={{padding:"2px 10px",background:"#f0fdf4",color:"#166534",borderRadius:5,fontSize:12,fontWeight:700}}>{(()=>{const co=companies?.find(c=>c.id===task.companyId);return co?`${co.code} — ${co.name}`:"–";})()}</span>)}
       {task.remarks&&row("Remarks",task.remarks)}
       {(()=>{
         // Collect all updates that have attachments for this task
@@ -1086,8 +1087,93 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
   </div>;
 }
 
+/* ── COMPANIES MANAGER ── */
+function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
+  const [editItem,setEditItem]=useState(null);
+  const [newCode,setNewCode]=useState("");
+  const [newName,setNewName]=useState("");
+  const [saving,setSaving]=useState(false);
+  const sorted=[...companies].sort((a,b)=>a.name.localeCompare(b.name));
+  const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
+
+  const handleAdd=async()=>{
+    if(!newCode.trim()||!newName.trim()){alert("Please enter both code and company name.");return;}
+    if(companies.find(c=>c.code.toUpperCase()===newCode.trim().toUpperCase())){alert("This code already exists.");return;}
+    if(companies.find(c=>c.name.toLowerCase()===newName.trim().toLowerCase())){alert("This company already exists.");return;}
+    setSaving(true);
+    await onSave({id:"co_"+Date.now(),code:newCode.trim().toUpperCase(),name:newName.trim(),active:true});
+    setNewCode("");setNewName("");setSaving(false);
+  };
+
+  const handleSaveEdit=async()=>{
+    if(!editItem?.code?.trim()||!editItem?.name?.trim()){alert("Code and name required.");return;}
+    setSaving(true);
+    await onSave(editItem);
+    setEditItem(null);setSaving(false);
+  };
+
+  const handleDelete=async(co)=>{
+    const linked=tasks.filter(t=>t.companyId===co.id&&t.status!=="Completed"&&!t.deleted);
+    if(linked.length>0){
+      alert(`Cannot delete "${co.name}" — ${linked.length} active task(s) linked. Reassign first.`);return;
+    }
+    if(!window.confirm(`Delete "${co.name}"? Cannot be undone.`))return;
+    await onDelete(co.id);
+  };
+
+  return<div>
+    <div style={{marginBottom:14}}>
+      <div style={{fontSize:13,color:"#64748b"}}>Manage related companies. Each task can be linked to a company.</div>
+      <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Short code shows in task list · Full name in task detail · Cannot delete if active tasks linked</div>
+    </div>
+    {/* Add new */}
+    <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+      <input style={{...inp,width:80,flex:"0 0 80px"}} value={newCode} onChange={e=>setNewCode(e.target.value.toUpperCase().slice(0,6))} placeholder="Code" maxLength={6}/>
+      <input style={{...inp,flex:1,minWidth:200}} value={newName} onChange={e=>setNewName(e.target.value)} placeholder="Full company name e.g. TKJ Project Management Sdn Bhd" onKeyDown={e=>e.key==="Enter"&&handleAdd()}/>
+      <button onClick={handleAdd} disabled={saving||!newCode.trim()||!newName.trim()} style={{padding:"8px 18px",borderRadius:7,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ Add</button>
+    </div>
+    {/* List */}
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {sorted.map(co=>{
+        const linkedCount=tasks.filter(t=>t.companyId===co.id&&!t.deleted).length;
+        const incompleteCount=tasks.filter(t=>t.companyId===co.id&&t.status!=="Completed"&&!t.deleted).length;
+        const isEditing=editItem?.id===co.id;
+        return<div key={co.id} style={{padding:"10px 14px",background:"#fff",borderRadius:8,border:"1.5px solid #e2e8f0",opacity:co.active?1:0.6}}>
+          {isEditing
+            ?<div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              <input style={{...inp,width:80,flex:"0 0 80px"}} value={editItem.code} onChange={e=>setEditItem(x=>({...x,code:e.target.value.toUpperCase().slice(0,6)}))} placeholder="Code"/>
+              <input style={{...inp,flex:1,minWidth:180}} value={editItem.name} onChange={e=>setEditItem(x=>({...x,name:e.target.value}))} placeholder="Full name" onKeyDown={e=>e.key==="Enter"&&handleSaveEdit()}/>
+              <button onClick={handleSaveEdit} disabled={saving} style={{padding:"6px 14px",borderRadius:6,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Save</button>
+              <button onClick={()=>setEditItem(null)} style={{padding:"6px 10px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
+            </div>
+            :<div style={{display:"flex",alignItems:"center",gap:10}}>
+              <span style={{background:"#0f2557",color:"#c9a227",borderRadius:5,padding:"3px 8px",fontSize:11,fontWeight:800,flexShrink:0}}>{co.code}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"#1e293b"}}>{co.name}</div>
+                <div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>
+                  {linkedCount>0?`${linkedCount} task${linkedCount!==1?"s":""} linked`:"No tasks linked"}
+                  {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>· {incompleteCount} active</span>}
+                </div>
+              </div>
+              {!co.active&&<Badge text="Inactive" color="#94a3b8" bg="#f1f5f9" small/>}
+              <div style={{display:"flex",gap:5,flexShrink:0}}>
+                <button onClick={()=>setEditItem({...co})} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>✏️ Edit</button>
+                <button onClick={()=>onSave({...co,active:!co.active})} style={{padding:"4px 10px",borderRadius:5,border:`1.5px solid ${co.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:co.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>{co.active?"Disable":"Enable"}</button>
+                <button onClick={()=>handleDelete(co)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,cursor:"pointer"}}>{incompleteCount>0?"🔒":"🗑"}</button>
+              </div>
+            </div>}
+        </div>;
+      })}
+      {sorted.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:13}}>No companies yet. Add one above.</div>}
+    </div>
+    <div style={{marginTop:10,fontSize:10,color:"#94a3b8",textAlign:"center"}}>
+      {sorted.filter(c=>c.active).length} active companies
+    </div>
+  </div>;
+}
+
 /* ── ADMIN VIEW ── */
-function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes,onSaveTaskType,onDeleteTaskType}){
+function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,companies,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes,onSaveTaskType,onDeleteTaskType,onSaveCompany,onDeleteCompany}){
   const [tab,setTab]=useState("projects");
   const [editProj,setEditProj]=useState(null);
   const [editMember,setEditMember]=useState(null);
@@ -1103,7 +1189,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   return<div style={{padding:26}}>
     <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>⚙️ Admin Settings</h2>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:18}}>
-      {[["projects","📁 Projects"],["tasktypes","🏷️ Task Types"],["members","👥 Members"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
+      {[["projects","📁 Projects"],["members","👥 Members"],["tasktypes","🏷️ Task Types"],["companies","🏢 Companies"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
     </div>
     {tab==="tasktypes"&&<div>
       <TaskTypesAdmin taskTypes={taskTypes} onSave={onSaveTaskTypes}/>
@@ -1198,6 +1284,9 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
     {tab==="tasktypes"&&<div>
       <TaskTypesManager taskTypes={taskTypes} tasks={tasks} onSave={onSaveTaskType||onSaveTaskTypes} onDelete={onDeleteTaskType}/>
     </div>}
+    {tab==="companies"&&<div>
+      <CompaniesManager companies={companies} tasks={tasks} onSave={onSaveCompany} onDelete={onDeleteCompany}/>
+    </div>}
     {tab==="audit"&&<div>
       <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
@@ -1257,6 +1346,7 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
   const discardDraft=()=>{setF(blank);clearDraft();};
   const activeProjects=projects.filter(p=>p.active);
   const activeTaskTypes=(taskTypes||[]).filter(tt=>tt.active).sort((a,b)=>a.name.localeCompare(b.name));
+  const activeCompanies=(companies||[]).filter(c=>c.active).sort((a,b)=>a.name.localeCompare(b.name));
   const lbl={fontSize:11,fontWeight:700,color:"#94a3b8",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4,display:"block"};
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"9px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
   const r2={display:"grid",gridTemplateColumns:"1fr 1fr",gap:16};
@@ -1295,6 +1385,8 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
       <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation – Civil Works"/></div>
       <Sel label="Task Type" value={f.taskTypeId||""} onChange={v=>upd("taskTypeId",v||null)}
         options={[<option key="" value="">– Select Type –</option>,...(activeTaskTypes||[]).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)]}/>
+      <Sel label="Company Related To" value={f.companyId||""} onChange={v=>upd("companyId",v||null)}
+        options={[<option key="" value="">– Select Company –</option>,...(activeCompanies||[]).map(co=><option key={co.id} value={co.id}>{co.code} — {co.name}</option>)]}/>
       <div style={r2}>
         <div><label style={lbl}>Prepared Date</label><input type="date" style={inp} value={f.preparedDate} onChange={e=>upd("preparedDate",e.target.value)}/></div>
         <div>
@@ -1858,6 +1950,7 @@ function App(){
   const [messages,setMessages]=useState([]);
   const [deleteRequests,setDeleteRequests]=useState([]);
   const [taskTypes,setTaskTypes]=useState([]);
+  const [companies,setCompanies]=useState([]);
   const [moods,setMoods]=useState({});
   const [loaded,setLoaded]=useState(false);
   const [view,setView]=useState("list");
@@ -1865,12 +1958,13 @@ function App(){
   const [selected,setSelected]=useState(null);
   const [selectedTab,setSelectedTab]=useState("info");
   const [showPersonal,setShowPersonal]=useState(false);
+  const [activeTab,setActiveTab]=useState("active"); // active | completed | personal
   const [showNotifs,setShowNotifs]=useState(false);
   const [pwModal,setPwModal]=useState(null);
   const [notifSeen,setNotifSeen]=useState(()=>LS.get("tkj_notif_seen")||{});
-  const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",taskType:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
-  const [sortKey,setSortKey]=useState(()=>LS.get("tkj_sort_key")||"dueDate");
-  const [sortDir,setSortDir]=useState(()=>LS.get("tkj_sort_dir")||"asc");
+  const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",taskType:"",company:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
+  const [sortKey,setSortKey]=useState(()=>LS.get("tkj_sort_key")||"createdAt");
+  const [sortDir,setSortDir]=useState(()=>LS.get("tkj_sort_dir")||"desc");
   const [showBriefing,setShowBriefing]=useState(false);
   const [toasts,setToasts]=useState([]);
   const [muted,setMuted]=useState(()=>LS.get("tkj_muted")||false);
@@ -1884,7 +1978,7 @@ function App(){
   useEffect(()=>{setDbReady(true);},[]);
 
   const loadAll=useCallback(async()=>{
-    const [mr,pr,tr,ur,msgr,drr,ttr]=await Promise.all([
+    const [mr,pr,tr,ur,msgr,drr,ttr,cor]=await Promise.all([
       db.from("members").select("*"),
       db.from("projects").select("*"),
       db.from("tasks").select("*"),
@@ -1892,6 +1986,7 @@ function App(){
       db.from("task_messages").select("*").order("timestamp",{ascending:true}),
       db.from("delete_requests").select("*"),
       db.from("task_types").select("*").order("name",{ascending:true}),
+      db.from("companies").select("*").order("name",{ascending:true}),
     ]);
     if(mr.data)setMembers(mr.data.map(fromMember));
     if(pr.data)setProjects(pr.data.map(fromProject));
@@ -1900,6 +1995,7 @@ function App(){
     if(msgr.data)setMessages(msgr.data.map(fromMsg));
     if(drr.data)setDeleteRequests(drr.data.map(fromDR));
     if(ttr.data)setTaskTypes(ttr.data);
+    if(cor.data)setCompanies(cor.data);
     setLoaded(true);
   },[]);
 
@@ -1919,6 +2015,7 @@ function App(){
       .on("postgres_changes",{event:"*",schema:"public",table:"task_messages"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"delete_requests"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"task_types"},()=>loadAll())
+      .on("postgres_changes",{event:"*",schema:"public",table:"companies"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"members"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"projects"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"moods"},()=>loadMoods())
@@ -2010,6 +2107,22 @@ function App(){
     try{localStorage.setItem("tkj_task_types",JSON.stringify(types));}catch{}
   };
 
+  const saveCompany=async(co)=>{
+    if(companies.find(x=>x.id===co.id)){
+      await db.from("companies").update({code:co.code,name:co.name,active:co.active}).eq("id",co.id);
+    } else {
+      await db.from("companies").insert({id:co.id,code:co.code,name:co.name,active:true});
+    }
+  };
+  const deleteCompany=async(id)=>{
+    const linked=tasks.filter(t=>t.companyId===id&&t.status!=="Completed"&&!t.deleted);
+    if(linked.length>0){
+      alert(`Cannot delete — ${linked.length} incomplete task(s) linked. Reassign them first.`);
+      return false;
+    }
+    await db.from("companies").delete().eq("id",id);
+    return true;
+  };
   const saveTaskType=async(tt)=>{
     if(taskTypes.find(x=>x.id===tt.id)){
       await db.from("task_types").update({name:tt.name,active:tt.active}).eq("id",tt.id);
@@ -2072,9 +2185,11 @@ function App(){
   }),[tasks]);
 
   const visibleTasks=useMemo(()=>{
-    if(showPersonal)return enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted);
-    return enriched.filter(t=>!t.isPersonal&&!t.deleted&&(t.status!=="Draft"||(t.createdBy===currentUserId||t.assignorId===currentUserId)));
-  },[enriched,showPersonal,currentUserId]);
+    if(activeTab==="personal")return enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted);
+    if(activeTab==="completed")return enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status==="Completed");
+    // active — exclude completed and personal
+    return enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status!=="Completed"&&(t.status!=="Draft"||(t.createdBy===currentUserId||t.assignorId===currentUserId)));
+  },[enriched,activeTab,currentUserId]);
 
   const filtered=useMemo(()=>{
     let res=visibleTasks;
@@ -2084,6 +2199,7 @@ function App(){
     if(filters.priority)res=res.filter(t=>t.priority===filters.priority);
     if(filters.assignee)res=res.filter(t=>t.assigneeId===filters.assignee);
     if(filters.taskType)res=res.filter(t=>t.taskTypeId===filters.taskType);
+    if(filters.company)res=res.filter(t=>t.companyId===filters.company);
     if(filters.taskType)res=res.filter(t=>t.taskType===filters.taskType);
     if(filters.dueDateFrom)res=res.filter(t=>t.dueDate>=filters.dueDateFrom);
     if(filters.dueDateTo)res=res.filter(t=>t.dueDate<=filters.dueDateTo);
@@ -2193,7 +2309,7 @@ function App(){
   const getMember=id=>members.find(m=>m.id===id);
   const getProject=id=>projects.find(p=>p.id===id);
   const activeFiltersCount=Object.entries(filters).filter(([k,v])=>k!=="search"&&v&&v!==false).length;
-  const clearFilters=()=>setFilters({project:"",status:"",priority:"",assignee:"",taskType:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
+  const clearFilters=()=>setFilters({project:"",status:"",priority:"",assignee:"",taskType:"",company:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
   const openTask=(taskId,tab="info")=>{const t=enriched.find(x=>x.id===taskId);if(t){setSelected(t);setSelectedTab(tab);setModal("detail");}};
   const selStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none",cursor:"pointer"};
   const dateStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none"};
@@ -2325,9 +2441,16 @@ function App(){
     />}
 
     {view==="list"&&<div style={{padding:"14px 18px"}}>
-      <div style={{display:"flex",gap:8,marginBottom:12}}>
-        <button onClick={()=>setShowPersonal(false)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${!showPersonal?"#0f2557":"#e2e8f0"}`,background:!showPersonal?"#0f2557":"#fff",color:!showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>📁 Project Tasks</button>
-        <button onClick={()=>setShowPersonal(true)} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${showPersonal?"#8b5cf6":"#e2e8f0"}`,background:showPersonal?"#8b5cf6":"#fff",color:showPersonal?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>👤 My Personal</button>
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+        <button onClick={()=>{setActiveTab("active");setShowPersonal(false);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="active"?"#0f2557":"#e2e8f0"}`,background:activeTab==="active"?"#0f2557":"#fff",color:activeTab==="active"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+          📋 Active Tasks <span style={{fontSize:10,background:activeTab==="active"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status!=="Completed").length}</span>
+        </button>
+        <button onClick={()=>{setActiveTab("completed");setShowPersonal(false);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="completed"?"#166534":"#e2e8f0"}`,background:activeTab==="completed"?"#166534":"#fff",color:activeTab==="completed"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+          ✅ Completed <span style={{fontSize:10,background:activeTab==="completed"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status==="Completed").length}</span>
+        </button>
+        <button onClick={()=>{setActiveTab("personal");setShowPersonal(true);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="personal"?"#8b5cf6":"#e2e8f0"}`,background:activeTab==="personal"?"#8b5cf6":"#fff",color:activeTab==="personal"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+          👤 My Personal <span style={{fontSize:10,background:activeTab==="personal"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted).length}</span>
+        </button>
       </div>
       <div style={{background:"#fff",borderRadius:10,padding:"12px 14px",marginBottom:14,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
@@ -2339,6 +2462,10 @@ function App(){
           <select value={filters.taskType||""} onChange={e=>updF("taskType",e.target.value)} style={selStyle}>
             <option value="">All Types</option>
             {taskTypes.filter(tt=>tt.active).sort((a,b)=>a.name.localeCompare(b.name)).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)}
+          </select>
+          <select value={filters.company||""} onChange={e=>updF("company",e.target.value)} style={selStyle}>
+            <option value="">All Companies</option>
+            {companies.filter(c=>c.active).map(c=><option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
           </select>
           <select value={filters.status} onChange={e=>updF("status",e.target.value)} style={selStyle}><option value="">All Status</option>{Object.keys(STATUS_META).map(s=><option key={s}>{s}</option>)}</select>
           <select value={filters.priority} onChange={e=>updF("priority",e.target.value)} style={selStyle}><option value="">All Priority</option>{Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}</select>
@@ -2383,12 +2510,12 @@ function App(){
       />
     </div>}
 
-    {modal==="form"&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={null} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
-    {modal==="edit"&&selected&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={enriched.find(t=>t.id===selected.id)||selected} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
+    {modal==="form"&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={null} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} companies={companies} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
+    {modal==="edit"&&selected&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={enriched.find(t=>t.id===selected.id)||selected} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} companies={companies} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
     {modal==="detail"&&selected&&<Modal onClose={()=>setModal(null)} extraWide>
       <TaskDetailModal
         task={enriched.find(t=>t.id===selected.id)||selected}
-        tasks={enriched} members={members} projects={projects} taskTypes={taskTypes}
+        tasks={enriched} members={members} projects={projects} taskTypes={taskTypes} companies={companies}
         updates={updates} messages={messages} currentUser={currentUser}
         onClose={()=>setModal(null)} onEdit={()=>setModal("edit")}
         isAdmin={isAdmin} deleteRequests={deleteRequests}
