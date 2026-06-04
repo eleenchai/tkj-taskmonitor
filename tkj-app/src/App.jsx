@@ -1,3 +1,4 @@
+// TKJ Task Monitor v2.1 - 20260604-1511
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { db, fromMember, toMember, fromProject, toProject, fromTask, toTask, fromUpdate, toUpdate, fromMsg, toMsg, fromDR, toDR } from './supabase.js'
 import { uid, today, nowISO, fmtDate, fmtTime, fmtDT, fmtBytes, daysDiff, genRef, readFiles, FILE_ICON, hashPassword, MOODS, STATUS_META, PRIORITY_META, ACCEPT } from './helpers.js'
