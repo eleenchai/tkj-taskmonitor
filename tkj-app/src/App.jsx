@@ -195,6 +195,8 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
   const taskUpdates=updates
     .filter(u=>u.taskId===task.id)
     .filter(u=>{
+      // Briefing audit logs: Admin only
+      if(u.type==="briefing_audit") return isAdmin;
       // Pending suggestions: only show to author + privileged users
       if(u.type==="suggestion"&&u.suggestionStatus==="pending"){
         return u.authorId===currentUser.id||canPostDirect;
@@ -609,7 +611,7 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
   const linked=tasks.filter(t=>task.linkedTo?.includes(t.id));
   const dependants=tasks.filter(t=>t.linkedTo?.includes(task.id));
   const ccMembers=(task.cc||[]).map(id=>getMember(id)).filter(Boolean);
-  const taskUpdates=updates.filter(u=>u.taskId===task.id);
+  const taskUpdates=updates.filter(u=>u.taskId===task.id).filter(u=>u.type!=="briefing_audit"||isAdmin);
   const taskMsgs=messages.filter(m=>m.taskId===task.id);
   const urgentMsgs=taskMsgs.filter(m=>m.urgent).length;
 
@@ -1026,7 +1028,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
     {tab==="audit"&&<div>
       <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
-        {[{label:"Total Events",n:updates.length,color:"#0f2557"},{label:"System Events",n:updates.filter(u=>u.type==="system").length,color:"#166534"},{label:"User Updates",n:updates.filter(u=>u.type==="comment").length,color:"#1e40af"},{label:"Deletion Events",n:updates.filter(u=>u.text&&u.text.includes("delete")).length,color:"#dc2626"}].map(s=><div key={s.label} style={{background:"#fff",borderRadius:8,padding:"12px 14px",border:`2px solid ${s.color}20`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+        {[{label:"Total Events",n:updates.length,color:"#0f2557"},{label:"System Events",n:updates.filter(u=>u.type==="system").length,color:"#166534"},{label:"User Updates",n:updates.filter(u=>u.type==="comment").length,color:"#1e40af"},{label:"Deletion Events",n:updates.filter(u=>u.text&&u.text.includes("delete")).length,color:"#dc2626"},{label:"Briefing Acks",n:updates.filter(u=>u.type==="briefing_audit").length,color:"#7c3aed"}].map(s=><div key={s.label} style={{background:"#fff",borderRadius:8,padding:"12px 14px",border:`2px solid ${s.color}20`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:24,fontWeight:900,color:s.color}}>{s.n}</div>
           <div style={{fontSize:10,color:"#64748b",marginTop:3,fontWeight:600}}>{s.label}</div>
         </div>)}
@@ -1037,8 +1039,9 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
           const task=tasks.find(t=>t.id===u.taskId);
           const isDeletion=u.text&&(u.text.toLowerCase().includes("delete")||u.text.toLowerCase().includes("deleted"));
           const isRejection=u.text&&u.text.includes("REJECTED");
-          const bgColor=isDeletion?"#fff5f5":isRejection?"#f0fdf4":u.type==="system"?"#f0fdf4":"#f8fafc";
-          const borderColor=isDeletion?"#fecaca":isRejection?"#bbf7d0":u.type==="system"?"#bbf7d0":"#e2e8f0";
+          const isBriefing=u.type==="briefing_audit";
+          const bgColor=isBriefing?"#f5f3ff":isDeletion?"#fff5f5":isRejection?"#f0fdf4":u.type==="system"?"#f0fdf4":"#f8fafc";
+          const borderColor=isBriefing?"#c4b5fd":isDeletion?"#fecaca":isRejection?"#bbf7d0":u.type==="system"?"#bbf7d0":"#e2e8f0";
           return<div key={u.id} style={{padding:"10px 14px",background:bgColor,borderRadius:8,border:`1px solid ${borderColor}`}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
               <Avatar name={author.name} size={24} color={u.type==="system"?"#166534":"#0f2557"}/>
@@ -1046,6 +1049,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
               {u.type==="system"&&<Badge text="SYSTEM" color="#166534" bg="#dcfce7" small/>}
               {isDeletion&&<Badge text="DELETION" color="#991b1b" bg="#fee2e2" small/>}
               {isRejection&&<Badge text="REJECT" color="#166534" bg="#dcfce7" small/>}
+              {isBriefing&&<Badge text="📋 BRIEFING" color="#7c3aed" bg="#ede9fe" small/>}
               <span style={{fontSize:10,color:"#94a3b8",marginLeft:"auto"}}>{fmtDT(u.timestamp)}</span>
             </div>
             {task&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,paddingLeft:32}}>Task: <span style={{fontWeight:700,color:"#0f2557"}}>{task.ref}</span> – {task.task}</div>}
@@ -1484,6 +1488,173 @@ function SetPasswordModal({member,onSave,onClose}){
   </div>;
 }
 
+/* ── TASK BRIEFING MODAL ── */
+function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpenTask}){
+  const [timeLeft,setTimeLeft]=useState(120); // 2 minutes
+  const [dismissed,setDismissed]=useState(false);
+
+  // Get incomplete tasks assigned to this member
+  const myTasks=enriched.filter(t=>
+    !t.deleted&&
+    !t.isPersonal&&
+    t.assigneeId===currentUser.id&&
+    t.status!=="Completed"&&
+    t.status!=="On Hold"&&
+    t.status!=="Draft"
+  ).sort((a,b)=>{
+    // Overdue first, then by due date
+    const aOver=a.status==="Overdue"?0:1;
+    const bOver=b.status==="Overdue"?0:1;
+    if(aOver!==bOver)return aOver-bOver;
+    return (a.dueDate||"9999").localeCompare(b.dueDate||"9999");
+  });
+
+  useEffect(()=>{
+    if(myTasks.length===0){onNoted("auto-none");return;}
+    const timer=setInterval(()=>{
+      setTimeLeft(t=>{
+        if(t<=1){clearInterval(timer);onNoted("auto-timeout");return 0;}
+        return t-1;
+      });
+    },1000);
+    return()=>clearInterval(timer);
+  },[]);
+
+  if(myTasks.length===0)return null;
+  if(dismissed)return null;
+
+  const overdueCount=myTasks.filter(t=>t.status==="Overdue").length;
+  const dueTodayCount=myTasks.filter(t=>daysDiff(t.dueDate)===0).length;
+
+  const handleNoted=()=>{
+    setDismissed(true);
+    onNoted("clicked");
+  };
+
+  return<div style={{
+    position:"fixed",inset:0,
+    background:"rgba(5,10,30,0.88)",
+    zIndex:5000,
+    display:"flex",alignItems:"center",justifyContent:"center",
+    backdropFilter:"blur(4px)",
+    padding:16,
+  }}>
+    <div style={{
+      background:"#fff",borderRadius:16,
+      width:"min(580px,96vw)",
+      maxHeight:"88vh",
+      overflowY:"auto",
+      boxShadow:"0 32px 100px rgba(0,0,0,0.5)",
+      display:"flex",flexDirection:"column",
+    }}>
+      {/* Header */}
+      <div style={{
+        background:"linear-gradient(135deg,#0a1a42,#0f2557)",
+        padding:"20px 24px",borderRadius:"16px 16px 0 0",
+        position:"sticky",top:0,zIndex:1,
+      }}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+          <div style={{fontSize:28}}>📋</div>
+          <div>
+            <div style={{fontSize:16,fontWeight:900,color:"#c9a227",letterSpacing:"0.05em"}}>
+              TASK BRIEFING
+            </div>
+            <div style={{fontSize:12,color:"#7ba3d4",marginTop:2}}>
+              Good day, {currentUser.name}! Here are your pending tasks.
+            </div>
+          </div>
+        </div>
+        {/* Summary badges */}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <span style={{padding:"3px 10px",background:"rgba(255,255,255,0.1)",borderRadius:20,fontSize:11,color:"#fff",fontWeight:600}}>
+            📋 {myTasks.length} Pending
+          </span>
+          {overdueCount>0&&<span style={{padding:"3px 10px",background:"#dc2626",borderRadius:20,fontSize:11,color:"#fff",fontWeight:700}}>
+            🚨 {overdueCount} Overdue
+          </span>}
+          {dueTodayCount>0&&<span style={{padding:"3px 10px",background:"#f97316",borderRadius:20,fontSize:11,color:"#fff",fontWeight:700}}>
+            ⚡ {dueTodayCount} Due Today
+          </span>}
+        </div>
+      </div>
+
+      {/* Task List */}
+      <div style={{padding:"16px 20px",flex:1}}>
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {myTasks.map(t=>{
+            const proj=projects.find(p=>p.id===t.projectId);
+            const assignor=members.find(m=>m.id===t.assignorId);
+            const d=daysDiff(t.dueDate);
+            const isOverdue=t.status==="Overdue"||d<0;
+            const isDueToday=d===0;
+            const isDueSoon=d>0&&d<=3;
+
+            return<div key={t.id}
+              onClick={()=>{handleNoted();setTimeout(()=>onOpenTask(t.id),150);}}
+              style={{
+                padding:"11px 14px",
+                background:isOverdue?"#fff5f5":isDueToday?"#fff7ed":"#f8fafc",
+                borderRadius:10,
+                border:`1.5px solid ${isOverdue?"#fecaca":isDueToday?"#fed7aa":"#e2e8f0"}`,
+                cursor:"pointer",
+                borderLeft:`4px solid ${isOverdue?"#dc2626":isDueToday?"#f97316":isDueSoon?"#f59e0b":"#3b82f6"}`,
+                transition:"transform 0.15s",
+              }}
+              onMouseEnter={e=>e.currentTarget.style.transform="translateX(4px)"}
+              onMouseLeave={e=>e.currentTarget.style.transform="none"}
+            >
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                    <span style={{fontSize:10,fontWeight:800,color:"#c9a227"}}>{t.ref}</span>
+                    {isOverdue&&<span style={{fontSize:9,background:"#fee2e2",color:"#dc2626",borderRadius:4,padding:"1px 6px",fontWeight:700}}>🚨 OVERDUE</span>}
+                    {isDueToday&&!isOverdue&&<span style={{fontSize:9,background:"#ffedd5",color:"#f97316",borderRadius:4,padding:"1px 6px",fontWeight:700}}>⚡ DUE TODAY</span>}
+                    {isDueSoon&&!isOverdue&&!isDueToday&&<span style={{fontSize:9,background:"#fef3c7",color:"#92400e",borderRadius:4,padding:"1px 6px",fontWeight:700}}>⏰ {d}d left</span>}
+                  </div>
+                  <div style={{fontSize:13,fontWeight:700,color:"#0f2557",marginBottom:3,wordBreak:"break-word"}}>{t.task}</div>
+                  <div style={{display:"flex",gap:10,fontSize:10,color:"#64748b",flexWrap:"wrap"}}>
+                    {proj&&<span>📁 {proj.name}</span>}
+                    {assignor&&<span>👤 From: {assignor.name}</span>}
+                    {t.dueDate&&<span>📅 Due: {fmtDate(t.dueDate)}</span>}
+                  </div>
+                </div>
+                <span style={{fontSize:11,color:"#94a3b8",flexShrink:0,marginTop:2}}>→</span>
+              </div>
+            </div>;
+          })}
+        </div>
+        <div style={{marginTop:12,padding:"10px 14px",background:"#f0f9ff",borderRadius:8,border:"1px solid #bae6fd",fontSize:11,color:"#0369a1"}}>
+          💡 Tap any task to open it directly. This briefing is logged in the audit trail.
+        </div>
+      </div>
+
+      {/* Footer — NOTED button */}
+      <div style={{
+        padding:"16px 20px",
+        borderTop:"1px solid #f1f5f9",
+        background:"#fafafa",
+        borderRadius:"0 0 16px 16px",
+        position:"sticky",bottom:0,
+      }}>
+        <button onClick={handleNoted} style={{
+          width:"100%",padding:"14px",
+          borderRadius:10,border:"none",
+          background:"linear-gradient(135deg,#166534,#16a34a)",
+          color:"#fff",fontSize:15,fontWeight:900,
+          cursor:"pointer",
+          letterSpacing:"0.08em",
+          boxShadow:"0 4px 20px rgba(22,101,52,0.35)",
+        }}>
+          ✅ NOTED — I acknowledge my pending tasks
+        </button>
+        <div style={{textAlign:"center",marginTop:8,fontSize:10,color:"#94a3b8"}}>
+          This window will close automatically · Your acknowledgement is recorded
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
 /* ── MAIN APP ── */
 function App(){
   const [dbReady,setDbReady]=useState(false);
@@ -1508,6 +1679,7 @@ function App(){
   const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
   const [sortKey,setSortKey]=useState(()=>LS.get("tkj_sort_key")||"dueDate");
   const [sortDir,setSortDir]=useState(()=>LS.get("tkj_sort_dir")||"asc");
+  const [showBriefing,setShowBriefing]=useState(false);
   const [toasts,setToasts]=useState([]);
   const [muted,setMuted]=useState(()=>LS.get("tkj_muted")||false);
   const prevNotifIds=useRef(new Set());
@@ -1655,6 +1827,28 @@ function App(){
   };
   const markNotifsRead=()=>{const seen={...notifSeen,[currentUserId]:nowISO()};setNotifSeen(seen);LS.set("tkj_notif_seen",seen);};
   const toggleMute=()=>{const m=!muted;setMuted(m);LS.set("tkj_muted",m);};
+  const handleBriefingNoted=async(how)=>{
+    setShowBriefing(false);
+    // Audit trail — log acknowledgement
+    const myPending=enriched.filter(t=>
+      !t.deleted&&!t.isPersonal&&
+      t.assigneeId===currentUserId&&
+      t.status!=="Completed"&&t.status!=="On Hold"&&t.status!=="Draft"
+    );
+    if(myPending.length>0&&how==="clicked"){
+      // Log one system update per task acknowledged
+      const now=nowISO();
+      for(const t of myPending.slice(0,10)){// cap at 10 to avoid spam
+        await addUpdate({
+          id:uid(),taskId:t.id,authorId:currentUserId,
+          text:`📋 Task briefing acknowledged by ${currentUser?.name} on ${fmtDT(now)}. Task status: ${t.status}.`,
+          attachments:[],timestamp:now,type:"briefing_audit",
+          supersedesId:null,supersededById:null,
+          suggestionStatus:null,approvedBy:null,approvedAt:null,
+        });
+      }
+    }
+  };
 
   const enriched=useMemo(()=>tasks.map(t=>{
     if(t.status!=="Completed"&&t.status!=="On Hold"&&t.dueDate&&daysDiff(t.dueDate)<0)return{...t,status:"Overdue"};return t;
@@ -1805,13 +1999,13 @@ function App(){
           <p style={{fontSize:13,color:"#64748b",margin:0}}>How are you feeling today?</p>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-          {MOODS.map(m=><button key={m.id} onClick={async()=>{await saveMood(user.id,m.id);setPasswordTarget(null);}}
+          {MOODS.map(m=><button key={m.id} onClick={async()=>{await saveMood(user.id,m.id);setPasswordTarget(null);setShowBriefing(true);}}
             style={{padding:"14px 8px",borderRadius:10,border:`2px solid ${moods[`${today()}_${user.id}`]===m.id?m.color:"#e2e8f0"}`,background:moods[`${today()}_${user.id}`]===m.id?m.color+"15":"#f8fafc",cursor:"pointer",textAlign:"center",display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
             <span style={{fontSize:26}}>{m.emoji}</span>
             <span style={{fontSize:10,fontWeight:700,color:"#475569"}}>{m.label}</span>
           </button>)}
         </div>
-        <button onClick={()=>setPasswordTarget(null)} style={{width:"100%",padding:"9px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:12,cursor:"pointer"}}>Skip</button>
+        <button onClick={()=>{setPasswordTarget(null);setShowBriefing(true);}} style={{width:"100%",padding:"9px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:12,cursor:"pointer"}}>Skip</button>
       </div>
     </div>;
   }
@@ -1854,6 +2048,13 @@ function App(){
 
   return<div style={{fontFamily:"'Century Gothic','Trebuchet MS',Tahoma,sans-serif",background:"#f0f4f8",minHeight:"100vh"}}>
     {pwModal&&<SetPasswordModal member={pwModal} onSave={setMemberPassword} onClose={()=>setPwModal(null)}/>}
+    {showBriefing&&currentUser&&loaded&&<TaskBriefing
+      tasks={tasks} enriched={enriched}
+      currentUser={currentUser}
+      members={members} projects={projects}
+      onNoted={handleBriefingNoted}
+      onOpenTask={(taskId)=>{setShowBriefing(false);setTimeout(()=>openTask(taskId,"info"),150);}}
+    />}
     <div style={{background:"linear-gradient(135deg,#0a1a42 0%,#0f2557 60%,#1a3a7c 100%)",boxShadow:"0 4px 24px rgba(10,26,66,0.4)",position:"sticky",top:0,zIndex:200}}>
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px 5px"}}>
         <img src={TKJ_LOGO} alt="TKJ" style={{height:40,objectFit:"contain",flexShrink:0,filter:"brightness(1.05)"}}/>
