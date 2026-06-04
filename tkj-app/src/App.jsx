@@ -1292,13 +1292,6 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
     </div>
     <div style={{display:"flex",flexDirection:"column",gap:15}}>
       {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">– Select Project –</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
-      <div style={r2}>
-        <Sel label="Task Type" value={f.taskType||""} onChange={v=>upd("taskType",v)}
-          options={[<option key="" value="">– Select Type –</option>,...taskTypes.filter(t=>t.active).map(t=><option key={t.id} value={t.name}>{t.name}</option>)]}/>
-        <div style={{display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
-          {f.taskType&&<span style={{fontSize:10,color:"#64748b",background:"#f1f5f9",borderRadius:5,padding:"4px 10px",textAlign:"center",fontWeight:600}}>{f.taskType}</span>}
-        </div>
-      </div>
       <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation – Civil Works"/></div>
       <Sel label="Task Type" value={f.taskTypeId||""} onChange={v=>upd("taskTypeId",v||null)}
         options={[<option key="" value="">– Select Type –</option>,...(activeTaskTypes||[]).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)]}/>
