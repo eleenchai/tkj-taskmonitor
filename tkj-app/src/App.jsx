@@ -29,6 +29,22 @@ const migrateTaskRefs=(tasks)=>tasks.map(t=>{
 /* ── HELPERS ── */
 const fmtDatetime=(d,t)=>d?`${fmtDate(d)}`:"";
 
+/* ── DEFAULT TASK TYPES ── */
+const DEFAULT_TASK_TYPES = [
+  {id:"tt1",name:"Payment",active:true},
+  {id:"tt2",name:"Variation",active:true},
+  {id:"tt3",name:"Design",active:true},
+  {id:"tt4",name:"Site Progress",active:true},
+  {id:"tt5",name:"Dispute",active:true},
+  {id:"tt6",name:"Legal",active:true},
+  {id:"tt7",name:"Admin",active:true},
+  {id:"tt8",name:"Misc",active:true},
+  {id:"tt9",name:"Client",active:true},
+  {id:"tt10",name:"Approval",active:true},
+  {id:"tt11",name:"Contractor",active:true},
+  {id:"tt12",name:"Renewal",active:true},
+];
+
 /* ── SMALL COMPONENTS ── */
 function Badge({text,color,bg,small}){
   return<span style={{background:bg,color,borderRadius:4,padding:small?"2px 7px":"3px 10px",fontSize:small?10:11,fontWeight:700,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{text}</span>;
@@ -593,7 +609,7 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
 }
 
 /* ── TASK DETAIL MODAL ── */
-function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
+function TaskDetailModal({task,tasks,members,projects,taskTypes,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [tab,setTab]=useState("info");
   const [editingDueDate,setEditingDueDate]=useState(false);
   const [newDueDate,setNewDueDate]=useState(task.dueDate||"");
@@ -721,11 +737,12 @@ function TaskDetailModal({task,tasks,members,projects,updates,messages,currentUs
       {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 14px",border:"none",borderBottom:tab===t.id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===t.id?"#0f2557":"#94a3b8",fontSize:12,fontWeight:tab===t.id?800:500,cursor:"pointer"}}>{t.label}</button>)}
     </div>
     {tab==="info"&&<div>
-      {row("Ref",task.ref)}{row("Prepared",fmtDate(task.preparedDate))}{row("Due Date",<DueChip date={task.dueDate} time={task.dueTime}/>)}
+      {row("Ref",task.ref)}{task.taskType&&row("Type",<span style={{background:"#eff6ff",color:"#1e40af",borderRadius:5,padding:"2px 10px",fontSize:12,fontWeight:700}}>{task.taskType}</span>)}{row("Prepared",fmtDate(task.preparedDate))}{row("Due Date",<DueChip date={task.dueDate} time={task.dueTime}/>)}
       {row("Completed",task.completedDate?<span style={{color:"#166534",fontWeight:600}}>✅ {fmtDate(task.completedDate)}</span>:"–")}
       {row("Assignor",assignor?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignor.name} size={20}/>{assignor.name}</div>:"–")}
       {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"–")}
       {ccMembers.length>0&&row("CC",<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>{ccMembers.map(m=><Badge key={m.id} text={m.name} color="#475569" bg="#f1f5f9" small/>)}</div>)}
+      {task.taskTypeId&&row("Task Type",<span style={{padding:"2px 10px",background:"#eff6ff",color:"#1e40af",borderRadius:5,fontSize:12,fontWeight:700}}>{taskTypes?.find(tt=>tt.id===task.taskTypeId)?.name||"–"}</span>)}
       {task.remarks&&row("Remarks",task.remarks)}
       {(()=>{
         // Collect all updates that have attachments for this task
@@ -919,8 +936,177 @@ function KPIView({tasks,members,projects,moods}){
   </div>;
 }
 
+/* ── TASK TYPES ADMIN ── */
+function TaskTypesAdmin({taskTypes=[],onSave}){
+  const [editItem,setEditItem]=useState(null);
+  const [newName,setNewName]=useState("");
+  const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
+
+  const addType=()=>{
+    if(!newName.trim()){alert("Please enter a type name.");return;}
+    if(taskTypes.find(t=>t.name.toLowerCase()===newName.trim().toLowerCase())){alert("Type already exists.");return;}
+    onSave([...taskTypes,{id:uid(),name:newName.trim(),active:true}]);
+    setNewName("");
+  };
+
+  const toggleActive=(id)=>{
+    onSave(taskTypes.map(t=>t.id===id?{...t,active:!t.active}:t));
+  };
+
+  const saveEdit=(id,name)=>{
+    if(!name.trim()){alert("Name required.");return;}
+    onSave(taskTypes.map(t=>t.id===id?{...t,name:name.trim()}:t));
+    setEditItem(null);
+  };
+
+  const moveUp=(idx)=>{
+    if(idx===0)return;
+    const arr=[...taskTypes];
+    [arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];
+    onSave(arr);
+  };
+
+  const moveDown=(idx)=>{
+    if(idx===taskTypes.length-1)return;
+    const arr=[...taskTypes];
+    [arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];
+    onSave(arr);
+  };
+
+  return<div>
+    <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <div>
+        <div style={{fontSize:13,color:"#64748b"}}>Admin-controlled task type categories.</div>
+        <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>These appear in the task form dropdown and filters. Drag to reorder using ↑↓ buttons.</div>
+      </div>
+    </div>
+
+    {/* Add new */}
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <input style={{...inp,flex:1}} value={newName} onChange={e=>setNewName(e.target.value)}
+        onKeyDown={e=>e.key==="Enter"&&addType()}
+        placeholder="New type name e.g. Inspection, Handover…"/>
+      <button onClick={addType} style={{padding:"8px 18px",borderRadius:7,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ Add</button>
+    </div>
+
+    {/* List */}
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {taskTypes.map((t,idx)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",background:"#fff",borderRadius:7,border:`1.5px solid ${t.active?"#e2e8f0":"#f1f5f9"}`,opacity:t.active?1:0.55}}>
+        {/* Order buttons */}
+        <div style={{display:"flex",flexDirection:"column",gap:1}}>
+          <button onClick={()=>moveUp(idx)} disabled={idx===0} style={{background:"none",border:"none",color:idx===0?"#e2e8f0":"#94a3b8",cursor:idx===0?"default":"pointer",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▲</button>
+          <button onClick={()=>moveDown(idx)} disabled={idx===taskTypes.length-1} style={{background:"none",border:"none",color:idx===taskTypes.length-1?"#e2e8f0":"#94a3b8",cursor:idx===taskTypes.length-1?"default":"pointer",fontSize:10,lineHeight:1,padding:"1px 3px"}}>▼</button>
+        </div>
+        {/* Number badge */}
+        <span style={{fontSize:10,color:"#94a3b8",fontWeight:700,minWidth:18,textAlign:"center"}}>{idx+1}</span>
+        {/* Name / edit */}
+        {editItem===t.id
+          ?<input autoFocus defaultValue={t.name}
+              onBlur={e=>saveEdit(t.id,e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter")saveEdit(t.id,e.target.value);if(e.key==="Escape")setEditItem(null);}}
+              style={{...inp,flex:1,padding:"5px 8px",fontSize:12}}/>
+          :<div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:13,fontWeight:600,color:t.active?"#1e293b":"#94a3b8"}}>{t.name}</span>
+            {!t.active&&<Badge text="Inactive" color="#94a3b8" bg="#f1f5f9" small/>}
+          </div>
+        }
+        {/* Actions */}
+        <div style={{display:"flex",gap:5,flexShrink:0}}>
+          {editItem!==t.id&&<button onClick={()=>setEditItem(t.id)} style={{padding:"3px 9px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>✏️</button>}
+          <button onClick={()=>toggleActive(t.id)} style={{padding:"3px 9px",borderRadius:5,border:`1.5px solid ${t.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:t.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>
+            {t.active?"Disable":"Enable"}
+          </button>
+        </div>
+      </div>)}
+    </div>
+    <div style={{marginTop:10,fontSize:10,color:"#94a3b8",textAlign:"center"}}>
+      {taskTypes.filter(t=>t.active).length} active types · Click ✏️ to rename · Disabled types are hidden from forms
+    </div>
+  </div>;
+}
+
+/* ── TASK TYPES MANAGER ── */
+function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
+  const [editItem,setEditItem]=useState(null);
+  const [newName,setNewName]=useState("");
+  const [saving,setSaving]=useState(false);
+  const sorted=[...(taskTypes||[])].sort((a,b)=>a.name.localeCompare(b.name));
+  const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
+
+  const handleAdd=async()=>{
+    if(!newName.trim()){alert("Please enter a type name.");return;}
+    const exists=(taskTypes||[]).find(tt=>tt.name.toLowerCase()===newName.trim().toLowerCase());
+    if(exists){alert("This type already exists.");return;}
+    setSaving(true);
+    await onSave({id:"tt_"+Date.now(),name:newName.trim(),active:true});
+    setNewName("");setSaving(false);
+  };
+
+  const handleEdit=async(tt)=>{
+    if(!editItem?.name?.trim()){alert("Name cannot be empty.");return;}
+    setSaving(true);
+    await onSave({...tt,name:editItem.name.trim()});
+    setEditItem(null);setSaving(false);
+  };
+
+  const handleDelete=async(tt)=>{
+    const linked=tasks.filter(t=>t.taskTypeId===tt.id&&t.status!=="Completed"&&t.status!=="On Hold"&&!t.deleted);
+    if(linked.length>0){
+      alert(`Cannot delete "${tt.name}" — ${linked.length} incomplete task(s) linked. Reassign them first.`);
+      return;
+    }
+    if(!window.confirm(`Delete task type "${tt.name}"? This cannot be undone.`))return;
+    await onDelete(tt.id);
+  };
+
+  return<div>
+    <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{fontSize:13,color:"#64748b"}}>Manage task types. Always sorted A–Z. Cannot delete if tasks are linked.</span>
+    </div>
+    {/* Add new */}
+    <div style={{display:"flex",gap:8,marginBottom:16}}>
+      <input style={{...inp,flex:1}} value={newName} onChange={e=>setNewName(e.target.value)}
+        placeholder="New type name (e.g. Tender)" onKeyDown={e=>e.key==="Enter"&&handleAdd()}/>
+      <button onClick={handleAdd} disabled={saving||!newName.trim()} style={{padding:"8px 18px",borderRadius:7,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+        + Add Type
+      </button>
+    </div>
+    {/* List */}
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {sorted.map(tt=>{
+        const linkedCount=tasks.filter(t=>t.taskTypeId===tt.id&&!t.deleted).length;
+        const incompleteCount=tasks.filter(t=>t.taskTypeId===tt.id&&t.status!=="Completed"&&t.status!=="On Hold"&&!t.deleted).length;
+        const isEditing=editItem?.id===tt.id;
+        return<div key={tt.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:8,border:"1.5px solid #e2e8f0"}}>
+          {isEditing
+            ?<input style={{...inp,flex:1}} value={editItem.name} onChange={e=>setEditItem(x=>({...x,name:e.target.value}))}
+               onKeyDown={e=>e.key==="Enter"&&handleEdit(tt)} autoFocus/>
+            :<div style={{flex:1}}>
+              <span style={{fontSize:13,fontWeight:600,color:"#1e293b"}}>{tt.name}</span>
+              <span style={{fontSize:10,color:"#94a3b8",marginLeft:10}}>
+                {linkedCount>0?`${linkedCount} task${linkedCount!==1?"s":""} linked`:"No tasks linked"}
+                {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>· {incompleteCount} incomplete</span>}
+              </span>
+            </div>}
+          <div style={{display:"flex",gap:6,flexShrink:0}}>
+            {isEditing
+              ?<><button onClick={()=>handleEdit(tt)} disabled={saving} style={{padding:"4px 12px",borderRadius:5,border:"none",background:"#0f2557",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>Save</button>
+                <button onClick={()=>setEditItem(null)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Cancel</button></>
+              :<><button onClick={()=>setEditItem({...tt})} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Edit</button>
+                <button onClick={()=>handleDelete(tt)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,cursor:"pointer"}}
+                  title={incompleteCount>0?"Cannot delete — incomplete tasks linked":""}>
+                  {incompleteCount>0?"🔒":"🗑"}
+                </button></>}
+          </div>
+        </div>;
+      })}
+      {sorted.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:13}}>No task types yet. Add one above.</div>}
+    </div>
+  </div>;
+}
+
 /* ── ADMIN VIEW ── */
-function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword}){
+function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes}){
   const [tab,setTab]=useState("projects");
   const [editProj,setEditProj]=useState(null);
   const [editMember,setEditMember]=useState(null);
@@ -936,8 +1122,11 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   return<div style={{padding:26}}>
     <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>⚙️ Admin Settings</h2>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:18}}>
-      {[["projects","📁 Projects"],["members","👥 Members"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
+      {[["projects","📁 Projects"],["tasktypes","🏷️ Task Types"],["members","👥 Members"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
     </div>
+    {tab==="tasktypes"&&<div>
+      <TaskTypesAdmin taskTypes={taskTypes} onSave={onSaveTaskTypes}/>
+    </div>}
     {tab==="projects"&&<div>
       <div style={{marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
         <span style={{fontSize:13,color:"#64748b"}}>Admin-controlled project list.</span>
@@ -1025,6 +1214,9 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
         </div>;
       })}
     </div>}
+    {tab==="tasktypes"&&<div>
+      <TaskTypesManager taskTypes={taskTypes} tasks={tasks} onSave={onSaveTaskType} onDelete={onDeleteTaskType}/>
+    </div>}
     {tab==="audit"&&<div>
       <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
@@ -1063,9 +1255,9 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
 }
 
 /* ── TASK FORM ── */
-function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
+function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSave,onCancel}){
   const DRAFT_KEY=`tkj_form_draft_${currentUser.id}`;
-  const blank={id:uid(),projectId:"",task:"",preparedDate:today(),dueDate:"",dueTime:"18:00",completedDate:"",status:"Not Started",priority:"Medium",assignorId:currentUser.id,assigneeId:"",cc:[],remarks:"",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:nowISO(),createdBy:currentUser.id};
+  const blank={id:uid(),projectId:"",task:"",taskType:"",preparedDate:today(),dueDate:"",dueTime:"18:00",completedDate:"",status:"Not Started",priority:"Medium",assignorId:currentUser.id,assigneeId:"",cc:[],remarks:"",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:nowISO(),createdBy:currentUser.id};
   const [f,setF]=useState(()=>{
     if(initial)return{...blank,...initial,cc:initial?.cc||[],linkedTo:initial?.linkedTo||[],attachments:initial?.attachments||[]};
     try{const saved=localStorage.getItem(DRAFT_KEY);if(saved){const d=JSON.parse(saved);if(d&&d._autoSaved)return{...blank,...d};}}catch{}
@@ -1083,6 +1275,7 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
   const clearDraft=()=>{try{localStorage.removeItem(DRAFT_KEY);}catch{}setHasDraftRecovery(false);};
   const discardDraft=()=>{setF(blank);clearDraft();};
   const activeProjects=projects.filter(p=>p.active);
+  const activeTaskTypes=(taskTypes||[]).filter(tt=>tt.active).sort((a,b)=>a.name.localeCompare(b.name));
   const lbl={fontSize:11,fontWeight:700,color:"#94a3b8",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:4,display:"block"};
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"9px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
   const r2={display:"grid",gridTemplateColumns:"1fr 1fr",gap:16};
@@ -1118,7 +1311,16 @@ function TaskForm({initial,tasks,members,projects,currentUser,onSave,onCancel}){
     </div>
     <div style={{display:"flex",flexDirection:"column",gap:15}}>
       {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">– Select Project –</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
+      <div style={r2}>
+        <Sel label="Task Type" value={f.taskType||""} onChange={v=>upd("taskType",v)}
+          options={[<option key="" value="">– Select Type –</option>,...taskTypes.filter(t=>t.active).map(t=><option key={t.id} value={t.name}>{t.name}</option>)]}/>
+        <div style={{display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+          {f.taskType&&<span style={{fontSize:10,color:"#64748b",background:"#f1f5f9",borderRadius:5,padding:"4px 10px",textAlign:"center",fontWeight:600}}>{f.taskType}</span>}
+        </div>
+      </div>
       <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation – Civil Works"/></div>
+      <Sel label="Task Type" value={f.taskTypeId||""} onChange={v=>upd("taskTypeId",v||null)}
+        options={[<option key="" value="">– Select Type –</option>,...(activeTaskTypes||[]).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)]}/>
       <div style={r2}>
         <div><label style={lbl}>Prepared Date</label><input type="date" style={inp} value={f.preparedDate} onChange={e=>upd("preparedDate",e.target.value)}/></div>
         <div>
@@ -1208,7 +1410,7 @@ function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
 }
 
 /* ── RESPONSIVE TASK TABLE ── */
-function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,projects,getMember,getProject,STATUS_META,PRIORITY_META,fmtDate,DueChip,Badge,Avatar,clearFilters,activeFiltersCount,onOpenTask}){
+function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,projects,taskTypes,getMember,getProject,STATUS_META,PRIORITY_META,fmtDate,DueChip,Badge,Avatar,clearFilters,activeFiltersCount,onOpenTask}){
   const [isMobile,setIsMobile]=useState(window.innerWidth<768);
   useEffect(()=>{
     const h=()=>setIsMobile(window.innerWidth<768);
@@ -1245,7 +1447,11 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
           {hasLinks&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,display:"flex",alignItems:"center",gap:3}}>
             <span>🔗</span><span style={{fontWeight:600}}>Has linked tasks</span>
           </div>}
-          {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:6}}>📁 {proj.name}</div>}
+          {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:4,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            <span>📁 {proj.name}</span>
+            {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"1px 8px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||""}</span>}
+            {false&&<span style={{fontSize:10,color:"#1e40af",background:"#dbeafe",borderRadius:4,padding:"1px 7px",fontWeight:600}}>{t.taskType}</span>}
+          </div>}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
             {assignor&&<div style={{display:"flex",alignItems:"center",gap:4}}>
               <Avatar name={assignor.name} size={18} color="#94a3b8"/>
@@ -1330,7 +1536,10 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
               <div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
               <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2,flexWrap:"wrap"}}>
                 {getMember(t.assignorId)&&<span style={{fontSize:9,color:"#94a3b8"}}>by {getMember(t.assignorId)?.name}</span>}
+                {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"1px 8px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||""}</span>}
+            {false&&<span style={{fontSize:9,color:"#1e40af",background:"#dbeafe",borderRadius:3,padding:"1px 5px",fontWeight:600}}>{t.taskType}</span>}
                 {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px"}}>🔗 linked</span>}
+                {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:9,color:"#1e40af",background:"#eff6ff",borderRadius:3,padding:"0px 5px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name}</span>}
               </div>
             </div>
             <div style={{overflow:"hidden"}}>{assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}</div>
@@ -1560,7 +1769,7 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
               TASK BRIEFING
             </div>
             <div style={{fontSize:12,color:"#7ba3d4",marginTop:2}}>
-              Good day, {currentUser.name}! Here are your pending tasks.
+              Hey {currentUser.name}! Quick heads-up before you dive in 👀
             </div>
           </div>
         </div>
@@ -1624,7 +1833,7 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
           })}
         </div>
         <div style={{marginTop:12,padding:"10px 14px",background:"#f0f9ff",borderRadius:8,border:"1px solid #bae6fd",fontSize:11,color:"#0369a1"}}>
-          💡 Tap any task to open it directly. This briefing is logged in the audit trail.
+          💡 Tap any task to jump straight in. You've got this, let's smash it today! 🔥
         </div>
       </div>
 
@@ -1645,10 +1854,10 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
           letterSpacing:"0.08em",
           boxShadow:"0 4px 20px rgba(22,101,52,0.35)",
         }}>
-          ✅ NOTED — I acknowledge my pending tasks
+          🚀 Let's Go !!
         </button>
         <div style={{textAlign:"center",marginTop:8,fontSize:10,color:"#94a3b8"}}>
-          This window will close automatically · Your acknowledgement is recorded
+          You got this! 💪 Window closes automatically.
         </div>
       </div>
     </div>
@@ -1666,6 +1875,10 @@ function App(){
   const [updates,setUpdates]=useState([]);
   const [messages,setMessages]=useState([]);
   const [deleteRequests,setDeleteRequests]=useState([]);
+  const [taskTypes,setTaskTypes]=useState([]);
+  const [taskTypes,setTaskTypes]=useState(()=>{
+    try{const s=localStorage.getItem("tkj_task_types");return s?JSON.parse(s):DEFAULT_TASK_TYPES;}catch{return DEFAULT_TASK_TYPES;}
+  });
   const [moods,setMoods]=useState({});
   const [loaded,setLoaded]=useState(false);
   const [view,setView]=useState("list");
@@ -1676,7 +1889,7 @@ function App(){
   const [showNotifs,setShowNotifs]=useState(false);
   const [pwModal,setPwModal]=useState(null);
   const [notifSeen,setNotifSeen]=useState(()=>LS.get("tkj_notif_seen")||{});
-  const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
+  const [filters,setFilters]=useState({project:"",status:"",priority:"",assignee:"",taskType:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
   const [sortKey,setSortKey]=useState(()=>LS.get("tkj_sort_key")||"dueDate");
   const [sortDir,setSortDir]=useState(()=>LS.get("tkj_sort_dir")||"asc");
   const [showBriefing,setShowBriefing]=useState(false);
@@ -1692,13 +1905,14 @@ function App(){
   useEffect(()=>{setDbReady(true);},[]);
 
   const loadAll=useCallback(async()=>{
-    const [mr,pr,tr,ur,msgr,drr]=await Promise.all([
+    const [mr,pr,tr,ur,msgr,drr,ttr]=await Promise.all([
       db.from("members").select("*"),
       db.from("projects").select("*"),
       db.from("tasks").select("*"),
       db.from("task_updates").select("*").order("timestamp",{ascending:true}),
       db.from("task_messages").select("*").order("timestamp",{ascending:true}),
       db.from("delete_requests").select("*"),
+      db.from("task_types").select("*").order("name",{ascending:true}),
     ]);
     if(mr.data)setMembers(mr.data.map(fromMember));
     if(pr.data)setProjects(pr.data.map(fromProject));
@@ -1706,6 +1920,7 @@ function App(){
     if(ur.data)setUpdates(ur.data.map(fromUpdate));
     if(msgr.data)setMessages(msgr.data.map(fromMsg));
     if(drr.data)setDeleteRequests(drr.data.map(fromDR));
+    if(ttr.data)setTaskTypes(ttr.data);
     setLoaded(true);
   },[]);
 
@@ -1724,6 +1939,7 @@ function App(){
       .on("postgres_changes",{event:"*",schema:"public",table:"task_updates"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"task_messages"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"delete_requests"},()=>loadAll())
+      .on("postgres_changes",{event:"*",schema:"public",table:"task_types"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"members"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"projects"},()=>loadAll())
       .on("postgres_changes",{event:"*",schema:"public",table:"moods"},()=>loadMoods())
@@ -1810,6 +2026,28 @@ function App(){
     }
     if(approved){setModal(null);setSelected(null);}
   };
+  const saveTaskTypes=(types)=>{
+    setTaskTypes(types);
+    try{localStorage.setItem("tkj_task_types",JSON.stringify(types));}catch{}
+  };
+
+  const saveTaskType=async(tt)=>{
+    if(taskTypes.find(x=>x.id===tt.id)){
+      await db.from("task_types").update({name:tt.name,active:tt.active}).eq("id",tt.id);
+    } else {
+      await db.from("task_types").insert({id:tt.id,name:tt.name,active:true});
+    }
+  };
+  const deleteTaskType=async(id)=>{
+    // Check if any incomplete tasks use this type
+    const linked=tasks.filter(t=>t.taskTypeId===id&&t.status!=="Completed"&&t.status!=="On Hold"&&!t.deleted);
+    if(linked.length>0){
+      alert(`Cannot delete — ${linked.length} incomplete task(s) are using this type. Please reassign them first.`);
+      return false;
+    }
+    await db.from("task_types").delete().eq("id",id);
+    return true;
+  };
   const updateMember=async(m)=>{
     const row=toMember(m);
     if(members.find(x=>x.id===m.id)){await db.from("members").update(row).eq("id",m.id);}
@@ -1866,6 +2104,8 @@ function App(){
     if(filters.status)res=res.filter(t=>t.status===filters.status);
     if(filters.priority)res=res.filter(t=>t.priority===filters.priority);
     if(filters.assignee)res=res.filter(t=>t.assigneeId===filters.assignee);
+    if(filters.taskType)res=res.filter(t=>t.taskTypeId===filters.taskType);
+    if(filters.taskType)res=res.filter(t=>t.taskType===filters.taskType);
     if(filters.dueDateFrom)res=res.filter(t=>t.dueDate>=filters.dueDateFrom);
     if(filters.dueDateTo)res=res.filter(t=>t.dueDate<=filters.dueDateTo);
     if(filters.preparedFrom)res=res.filter(t=>t.preparedDate>=filters.preparedFrom);
@@ -1974,7 +2214,7 @@ function App(){
   const getMember=id=>members.find(m=>m.id===id);
   const getProject=id=>projects.find(p=>p.id===id);
   const activeFiltersCount=Object.entries(filters).filter(([k,v])=>k!=="search"&&v&&v!==false).length;
-  const clearFilters=()=>setFilters({project:"",status:"",priority:"",assignee:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
+  const clearFilters=()=>setFilters({project:"",status:"",priority:"",assignee:"",taskType:"",search:"",dueDateFrom:"",dueDateTo:"",preparedFrom:"",preparedTo:"",completedFrom:"",completedTo:"",showDueToday:false,showDueWeek:false});
   const openTask=(taskId,tab="info")=>{const t=enriched.find(x=>x.id===taskId);if(t){setSelected(t);setSelectedTab(tab);setModal("detail");}};
   const selStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none",cursor:"pointer"};
   const dateStyle={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,color:"#1e293b",background:"#fff",outline:"none"};
@@ -2095,10 +2335,12 @@ function App(){
     {view==="admin"&&isAdmin&&<AdminView
       members={members} projects={projects} tasks={enriched} updates={updates}
       deleteRequests={deleteRequests} currentUser={currentUser}
+      taskTypes={taskTypes}
       onUpdateMembers={async(arr)=>{for(const m of arr)await updateMember(m);}}
       onUpdateProjects={async(arr)=>{for(const p of arr)await updateProject(p);}}
       onReviewDeleteRequest={reviewDeleteRequest}
       onSetPassword={(m)=>setPwModal(m)}
+      onSaveTaskTypes={saveTaskTypes}
     />}
 
     {view==="list"&&<div style={{padding:"14px 18px"}}>
@@ -2113,9 +2355,17 @@ function App(){
             <input value={filters.search} onChange={e=>updF("search",e.target.value)} placeholder="Search tasks, ref…" style={{...selStyle,paddingLeft:28,width:"100%",boxSizing:"border-box"}}/>
           </div>
           {!showPersonal&&<select value={filters.project} onChange={e=>updF("project",e.target.value)} style={selStyle}><option value="">All Projects</option>{projects.filter(p=>p.active).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}
+          <select value={filters.taskType||""} onChange={e=>updF("taskType",e.target.value)} style={selStyle}>
+            <option value="">All Types</option>
+            {taskTypes.filter(tt=>tt.active).sort((a,b)=>a.name.localeCompare(b.name)).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)}
+          </select>
           <select value={filters.status} onChange={e=>updF("status",e.target.value)} style={selStyle}><option value="">All Status</option>{Object.keys(STATUS_META).map(s=><option key={s}>{s}</option>)}</select>
           <select value={filters.priority} onChange={e=>updF("priority",e.target.value)} style={selStyle}><option value="">All Priority</option>{Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}</select>
           {!showPersonal&&<select value={filters.assignee} onChange={e=>updF("assignee",e.target.value)} style={selStyle}><option value="">All Assignee</option>{members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select>}
+          <select value={filters.taskType} onChange={e=>updF("taskType",e.target.value)} style={selStyle}>
+            <option value="">All Types</option>
+            {taskTypes.filter(t=>t.active).map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
+          </select>
           {activeFiltersCount>0&&<button onClick={clearFilters} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ Clear</button>}
         </div>
         <div style={{display:"flex",gap:10,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
@@ -2143,7 +2393,7 @@ function App(){
       </div>
       <ResponsiveTaskTable
         filtered={filtered} enriched={enriched} messages={messages}
-        notifications={notifications} members={members} projects={projects}
+        notifications={notifications} members={members} projects={projects} taskTypes={taskTypes}
         getMember={getMember} getProject={getProject}
         STATUS_META={STATUS_META} PRIORITY_META={PRIORITY_META}
         fmtDate={fmtDate} DueChip={DueChip} Badge={Badge} Avatar={Avatar}
@@ -2152,12 +2402,12 @@ function App(){
       />
     </div>}
 
-    {modal==="form"&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={null} tasks={tasks} members={members} projects={projects} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
-    {modal==="edit"&&selected&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={enriched.find(t=>t.id===selected.id)||selected} tasks={tasks} members={members} projects={projects} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
+    {modal==="form"&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={null} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
+    {modal==="edit"&&selected&&<Modal onClose={()=>setModal(null)} wide><TaskForm initial={enriched.find(t=>t.id===selected.id)||selected} tasks={tasks} members={members} projects={projects} taskTypes={taskTypes} currentUser={currentUser} onSave={saveTask} onCancel={()=>setModal(null)}/></Modal>}
     {modal==="detail"&&selected&&<Modal onClose={()=>setModal(null)} extraWide>
       <TaskDetailModal
         task={enriched.find(t=>t.id===selected.id)||selected}
-        tasks={enriched} members={members} projects={projects}
+        tasks={enriched} members={members} projects={projects} taskTypes={taskTypes}
         updates={updates} messages={messages} currentUser={currentUser}
         onClose={()=>setModal(null)} onEdit={()=>setModal("edit")}
         isAdmin={isAdmin} deleteRequests={deleteRequests}

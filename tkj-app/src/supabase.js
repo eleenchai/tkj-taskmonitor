@@ -41,6 +41,7 @@ export const fromTask   = r => ({
   deletedAt:r.deleted_at,deletedBy:r.deleted_by,
   deletedApprovedBy:r.deleted_approved_by,
   createdAt:r.created_at,createdBy:r.created_by,
+  taskTypeId:r.task_type_id||null,
 })
 export const toTask = t => ({
   id:t.id,ref:t.ref,project_id:t.projectId||null,task:t.task,
@@ -54,6 +55,7 @@ export const toTask = t => ({
   deleted_at:t.deletedAt||null,deleted_by:t.deletedBy||null,
   deleted_approved_by:t.deletedApprovedBy||null,
   created_at:t.createdAt,created_by:t.createdBy||null,
+  task_type_id:t.taskTypeId||null,
 })
 
 // ── UPDATE MAPPER — now includes supersede chain + suggestion fields ──
