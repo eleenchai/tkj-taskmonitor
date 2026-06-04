@@ -30,20 +30,6 @@ const migrateTaskRefs=(tasks)=>tasks.map(t=>{
 const fmtDatetime=(d,t)=>d?`${fmtDate(d)}`:"";
 
 /* ── DEFAULT TASK TYPES ── */
-const DEFAULT_TASK_TYPES = [
-  {id:"tt1",name:"Payment",active:true},
-  {id:"tt2",name:"Variation",active:true},
-  {id:"tt3",name:"Design",active:true},
-  {id:"tt4",name:"Site Progress",active:true},
-  {id:"tt5",name:"Dispute",active:true},
-  {id:"tt6",name:"Legal",active:true},
-  {id:"tt7",name:"Admin",active:true},
-  {id:"tt8",name:"Misc",active:true},
-  {id:"tt9",name:"Client",active:true},
-  {id:"tt10",name:"Approval",active:true},
-  {id:"tt11",name:"Contractor",active:true},
-  {id:"tt12",name:"Renewal",active:true},
-];
 
 /* ── SMALL COMPONENTS ── */
 function Badge({text,color,bg,small}){
@@ -1876,9 +1862,6 @@ function App(){
   const [messages,setMessages]=useState([]);
   const [deleteRequests,setDeleteRequests]=useState([]);
   const [taskTypes,setTaskTypes]=useState([]);
-  const [taskTypes,setTaskTypes]=useState(()=>{
-    try{const s=localStorage.getItem("tkj_task_types");return s?JSON.parse(s):DEFAULT_TASK_TYPES;}catch{return DEFAULT_TASK_TYPES;}
-  });
   const [moods,setMoods]=useState({});
   const [loaded,setLoaded]=useState(false);
   const [view,setView]=useState("list");
