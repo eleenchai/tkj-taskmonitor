@@ -1092,7 +1092,7 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
 }
 
 /* ── ADMIN VIEW ── */
-function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes}){
+function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes,onSaveTaskType,onDeleteTaskType}){
   const [tab,setTab]=useState("projects");
   const [editProj,setEditProj]=useState(null);
   const [editMember,setEditMember]=useState(null);
@@ -1201,7 +1201,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
       })}
     </div>}
     {tab==="tasktypes"&&<div>
-      <TaskTypesManager taskTypes={taskTypes} tasks={tasks} onSave={onSaveTaskType} onDelete={onDeleteTaskType}/>
+      <TaskTypesManager taskTypes={taskTypes} tasks={tasks} onSave={onSaveTaskType||onSaveTaskTypes} onDelete={onDeleteTaskType}/>
     </div>}
     {tab==="audit"&&<div>
       <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
@@ -2324,6 +2324,8 @@ function App(){
       onReviewDeleteRequest={reviewDeleteRequest}
       onSetPassword={(m)=>setPwModal(m)}
       onSaveTaskTypes={saveTaskTypes}
+      onSaveTaskType={saveTaskType}
+      onDeleteTaskType={deleteTaskType}
     />}
 
     {view==="list"&&<div style={{padding:"14px 18px"}}>
