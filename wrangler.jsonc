@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tkj-taskmonitor",
+  "compatibility_date": "2026-06-05",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "tkj-app"
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ]
+}
