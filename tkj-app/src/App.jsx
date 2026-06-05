@@ -15,7 +15,7 @@ function useWindowWidth(){
   return w;
 }
 
-/* â”€â”€ DATA MIGRATION â”€â”€ */
+/* ── DATA MIGRATION ── */
 const migrateTaskRefs=(tasks)=>tasks.map(t=>{
   if(t.ref&&/^TKJ-(.+)-\d{4}-(\d+)$/.test(t.ref)){
     const m=t.ref.match(/^TKJ-(.+)-\d{4}-(\d+)$/);
@@ -27,20 +27,20 @@ const migrateTaskRefs=(tasks)=>tasks.map(t=>{
   return t;
 });
 
-/* â”€â”€ HELPERS â”€â”€ */
+/* ── HELPERS ── */
 const fmtDatetime=(d,t)=>d?`${fmtDate(d)}`:"";
 
-/* â”€â”€ DEFAULT TASK TYPES â”€â”€ */
+/* ── DEFAULT TASK TYPES ── */
 
-/* â”€â”€ SMALL COMPONENTS â”€â”€ */
+/* ── SMALL COMPONENTS ── */
 function Badge({text,color,bg,small}){
   return<span style={{background:bg,color,borderRadius:4,padding:small?"2px 7px":"3px 10px",fontSize:small?10:11,fontWeight:700,letterSpacing:"0.04em",whiteSpace:"nowrap"}}>{text}</span>;
 }
 function DueChip({date,time}){
-  const d=daysDiff(date);if(d===null)return<span style={{color:"#94a3b8",fontSize:12}}>â€“</span>;
+  const d=daysDiff(date);if(d===null)return<span style={{color:"#94a3b8",fontSize:12}}>–</span>;
   let color,bg,prefix;
   if(d<0){color="#991b1b";bg="#fee2e2";prefix=`${Math.abs(d)}d overdue`;}
-  else if(d===0){color="#7c2d12";bg="#ffedd5";prefix=`Due today${time?` Â· ${fmtTime(time)}`:""}`;}
+  else if(d===0){color="#7c2d12";bg="#ffedd5";prefix=`Due today${time?` · ${fmtTime(time)}`:""}`;}
   else if(d<=3){color="#92400e";bg="#fef3c7";prefix=`${d}d left`;}
   else if(d<=7){color="#1e40af";bg="#dbeafe";prefix=`${d}d left`;}
   else{color="#374151";bg="#f3f4f6";prefix=`${d}d left`;}
@@ -79,23 +79,23 @@ function MemberPicker({label,selected=[],onChange,members,excludeIds=[]}){
   </div>;
 }
 
-/* â”€â”€ LIGHTBOX VIEWER â”€â”€ */
+/* ── LIGHTBOX VIEWER ── */
 function Lightbox({src,name,onClose}){
   return<div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:9999,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:16}}>
     <div style={{position:"absolute",top:16,right:16,display:"flex",gap:10}}>
       <a href={src} download={name} onClick={e=>e.stopPropagation()}
         style={{padding:"7px 14px",background:"rgba(255,255,255,0.15)",color:"#fff",borderRadius:7,fontSize:12,fontWeight:700,textDecoration:"none",border:"1px solid rgba(255,255,255,0.3)"}}>
-        â¬‡ Save
+        ⬇ Save
       </a>
-      <button onClick={onClose} style={{padding:"7px 14px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>âœ• Close</button>
+      <button onClick={onClose} style={{padding:"7px 14px",background:"rgba(255,255,255,0.15)",color:"#fff",border:"1px solid rgba(255,255,255,0.3)",borderRadius:7,fontSize:12,fontWeight:700,cursor:"pointer"}}>✕ Close</button>
     </div>
-    <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:10,textAlign:"center"}}>{name} Â· Pinch or scroll to zoom Â· Tap outside to close</div>
+    <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",marginBottom:10,textAlign:"center"}}>{name} · Pinch or scroll to zoom · Tap outside to close</div>
     <img src={src} alt={name} onClick={e=>e.stopPropagation()}
       style={{maxWidth:"100%",maxHeight:"85vh",objectFit:"contain",borderRadius:8,boxShadow:"0 8px 40px rgba(0,0,0,0.6)",cursor:"zoom-in"}}/>
   </div>;
 }
 
-/* â”€â”€ INLINE FILE DISPLAY â”€â”€ */
+/* ── INLINE FILE DISPLAY ── */
 function InlineFiles({files=[]}){
   const [lightbox,setLightbox]=useState(null);
   if(!files.length)return null;
@@ -108,14 +108,14 @@ function InlineFiles({files=[]}){
         {isImg
           ?<div style={{cursor:"zoom-in"}} onClick={()=>setLightbox({src:f.data,name:f.name})}>
             <img src={f.data} alt={f.name} style={{maxWidth:"100%",borderRadius:7,border:"2px solid #e2e8f0",display:"block",objectFit:"contain"}}/>
-            <div style={{fontSize:10,color:"#64748b",marginTop:3,textAlign:"center"}}>ğŸ” Tap to enlarge Â· {f.name}</div>
+            <div style={{fontSize:10,color:"#64748b",marginTop:3,textAlign:"center"}}>🔍 Tap to enlarge · {f.name}</div>
           </div>
           :<a href={f.data} target="_blank" rel="noopener noreferrer" download={!isPdf?f.name:undefined}
             style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
             <span style={{fontSize:16}}>{FILE_ICON(f.type)}</span>
             <div style={{minWidth:0}}>
               <div style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:220}}>{f.name}</div>
-              <div style={{fontSize:9,color:"#94a3b8"}}>{fmtBytes(f.size)} Â· {isPdf?"tap to view PDF":"tap to open"}</div>
+              <div style={{fontSize:9,color:"#94a3b8"}}>{fmtBytes(f.size)} · {isPdf?"tap to view PDF":"tap to open"}</div>
             </div>
           </a>}
       </div>;
@@ -123,7 +123,7 @@ function InlineFiles({files=[]}){
   </div>;
 }
 
-/* â”€â”€ ATTACHMENT PANEL â”€â”€ */
+/* ── ATTACHMENT PANEL ── */
 function AttachmentPanel({attachments=[],onChange,readOnly=false}){
   const inputRef=useRef();
   const [dragging,setDragging]=useState(false);
@@ -136,9 +136,9 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
       onDrop={e=>{e.preventDefault();setDragging(false);processFiles(e.dataTransfer.files);}}
       onClick={()=>inputRef.current?.click()}
       style={{border:`2px dashed ${dragging?"#1e40af":"#cbd5e1"}`,borderRadius:8,padding:"14px",textAlign:"center",cursor:"pointer",background:dragging?"#eff6ff":"#f8fafc",marginBottom:attachments.length?10:0}}>
-      <div style={{fontSize:18,marginBottom:3}}>ğŸ“</div>
+      <div style={{fontSize:18,marginBottom:3}}>📎</div>
       <div style={{fontSize:12,fontWeight:700,color:"#475569"}}>Click or drag to attach</div>
-      <div style={{fontSize:10,color:"#94a3b8"}}>Images, PDF, Word, Excel Â· Max 10MB</div>
+      <div style={{fontSize:10,color:"#94a3b8"}}>Images, PDF, Word, Excel · Max 10MB</div>
       <input ref={inputRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>processFiles(e.target.files)}/>
     </div>}
     {attachments.map(f=>{
@@ -150,10 +150,10 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
               <img src={f.data} alt={f.name} style={{width:"100%",borderRadius:7,border:"1px solid #e2e8f0",display:"block",objectFit:"contain"}}/>
             </div>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:4,padding:"0 2px"}}>
-              <span style={{fontSize:10,color:"#64748b"}}>ğŸ” {f.name}</span>
+              <span style={{fontSize:10,color:"#64748b"}}>🔍 {f.name}</span>
               <div style={{display:"flex",gap:6}}>
-                <a href={f.data} download={f.name} style={{padding:"3px 10px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>â¬‡ Save</a>
-                {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:10,fontWeight:700,borderRadius:4,cursor:"pointer"}}>âœ•</button>}
+                <a href={f.data} download={f.name} style={{padding:"3px 10px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",borderRadius:4,fontSize:10,fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
+                {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 8px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:10,fontWeight:700,borderRadius:4,cursor:"pointer"}}>✕</button>}
               </div>
             </div>
           </div>
@@ -163,15 +163,15 @@ function AttachmentPanel({attachments=[],onChange,readOnly=false}){
               <div style={{fontSize:12,fontWeight:600,color:"#1e293b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
               <div style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</div>
             </div>
-            <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",fontSize:11,fontWeight:700,borderRadius:4,textDecoration:"none"}}>â¬‡</a>
-            {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 7px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:11,fontWeight:700,borderRadius:4,cursor:"pointer"}}>âœ•</button>}
+            <a href={f.data} download={f.name} style={{padding:"3px 8px",background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1e40af",fontSize:11,fontWeight:700,borderRadius:4,textDecoration:"none"}}>⬇</a>
+            {!readOnly&&<button onClick={()=>onChange(attachments.filter(x=>x.id!==f.id))} style={{padding:"3px 7px",background:"#fff0f0",border:"1px solid #fecaca",color:"#dc2626",fontSize:11,fontWeight:700,borderRadius:4,cursor:"pointer"}}>✕</button>}
           </div>}
       </div>;
     })}
   </div>;
 }
 
-/* â”€â”€ LINK RENDERER â€” auto-detect URLs â”€â”€ */
+/* ── LINK RENDERER — auto-detect URLs ── */
 function RenderText({text}){
   if(!text)return null;
   const urlRegex=/(https?:\/\/[^\s]+)/g;
@@ -183,7 +183,7 @@ function RenderText({text}){
   )}</span>;
 }
 
-/* â”€â”€ UPDATES TAB â”€â”€ */
+/* ── UPDATES TAB ── */
 function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssignee,onAddUpdate,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [text,setText]=useState("");
   const [files,setFiles]=useState([]);
@@ -285,7 +285,7 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
   };
   return<div>
     {lightboxItem&&<Lightbox src={lightboxItem.src} name={lightboxItem.name} onClose={()=>setLightboxItem(null)}/>}
-    {/* â”€â”€ UPDATE LIST â”€â”€ */}
+    {/* ── UPDATE LIST ── */}
     <div style={{maxHeight:420,overflowY:"auto",display:"flex",flexDirection:"column",gap:10,marginBottom:14,paddingRight:2}}>
       {taskUpdates.length===0&&<div style={{textAlign:"center",padding:"28px 0",color:"#94a3b8",fontSize:13}}>No updates yet.</div>}
       {taskUpdates.map(u=>{
@@ -307,46 +307,46 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
         return<div key={u.id} ref={el=>updateRefs.current[u.id]=el}
           style={{padding:"12px 14px",background:bgColor,borderRadius:9,border:`1.5px solid ${borderColor}`,opacity:isSuperseded?0.65:1,transition:"all 0.3s"}}>
 
-          {/* â”€â”€ SUPERSEDED BANNER â”€â”€ */}
+          {/* ── SUPERSEDED BANNER ── */}
           {isSuperseded&&supersededByUpdate&&<div style={{marginBottom:8,padding:"5px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
-            <span style={{fontSize:10,fontWeight:700,color:"#92400e"}}>âš ï¸ UPDATED â€” refer to newer update</span>
+            <span style={{fontSize:10,fontWeight:700,color:"#92400e"}}>⚠️ UPDATED — refer to newer update</span>
             <button onClick={()=>scrollToUpdate(supersededByUpdate.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
-              â†’ View Update by {getMember(supersededByUpdate.authorId)?.name} Â· {fmtDT(supersededByUpdate.timestamp)}
+              → View Update by {getMember(supersededByUpdate.authorId)?.name} · {fmtDT(supersededByUpdate.timestamp)}
             </button>
           </div>}
 
-          {/* â”€â”€ SUPERSEDES REFERENCE â”€â”€ */}
+          {/* ── SUPERSEDES REFERENCE ── */}
           {supersedes&&<div style={{marginBottom:8,padding:"5px 10px",background:"#f0f9ff",borderRadius:6,border:"1px solid #bfdbfe",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:4}}>
-            <span style={{fontSize:10,color:"#1e40af",fontWeight:700}}>â†©ï¸ Supersedes earlier update:</span>
+            <span style={{fontSize:10,color:"#1e40af",fontWeight:700}}>↩️ Supersedes earlier update:</span>
             <button onClick={()=>scrollToUpdate(supersedes.id)} style={{fontSize:10,color:"#1e40af",background:"#dbeafe",border:"none",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontWeight:700}}>
-              â†’ {getMember(supersedes.authorId)?.name} Â· {fmtDT(supersedes.timestamp)}
+              → {getMember(supersedes.authorId)?.name} · {fmtDT(supersedes.timestamp)}
             </button>
           </div>}
 
-          {/* â”€â”€ PENDING SUGGESTION BANNER â”€â”€ */}
+          {/* ── PENDING SUGGESTION BANNER ── */}
           {isPending&&<div style={{marginBottom:8,padding:"6px 10px",background:"#fef3c7",borderRadius:6,border:"1px solid #fbbf24"}}>
             <div style={{fontSize:10,fontWeight:700,color:"#92400e",marginBottom:canPostDirect?6:0}}>
-              â³ Suggested Update â€” Pending Approval
+              ⏳ Suggested Update — Pending Approval
               {u.authorId===currentUser.id&&" (your suggestion)"}
             </div>
             {canPostDirect&&<div style={{display:"flex",gap:6}}>
-              <button onClick={()=>handleApprove(u)} style={{padding:"4px 12px",borderRadius:5,border:"none",background:"#166534",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>âœ… Approve & Post</button>
-              <button onClick={()=>handleReject(u)} style={{padding:"4px 10px",borderRadius:5,border:"1px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>âŒ Reject</button>
+              <button onClick={()=>handleApprove(u)} style={{padding:"4px 12px",borderRadius:5,border:"none",background:"#166534",color:"#fff",fontSize:11,fontWeight:700,cursor:"pointer"}}>✅ Approve & Post</button>
+              <button onClick={()=>handleReject(u)} style={{padding:"4px 10px",borderRadius:5,border:"1px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>❌ Reject</button>
             </div>}
           </div>}
 
-          {/* â”€â”€ APPROVED BY BANNER â”€â”€ */}
+          {/* ── APPROVED BY BANNER ── */}
           {u.approvedBy&&approver&&<div style={{marginBottom:8,padding:"4px 10px",background:"#f0fdf4",borderRadius:6,border:"1px solid #bbf7d0"}}>
-            <span style={{fontSize:10,color:"#166534",fontWeight:700}}>âœ… Approved by {approver.name} Â· {fmtDT(u.approvedAt)}</span>
+            <span style={{fontSize:10,color:"#166534",fontWeight:700}}>✅ Approved by {approver.name} · {fmtDT(u.approvedAt)}</span>
           </div>}
 
-          {/* â”€â”€ HEADER â”€â”€ */}
+          {/* ── HEADER ── */}
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
             <Avatar name={author.name} size={30} color={author.role==="admin"?"#c9a227":"#0f2557"}/>
             <div style={{flex:1}}>
               <div style={{fontSize:13,fontWeight:800,color:"#0f2557"}}>
                 {author.name}
-                {u.approvedBy&&approver&&<span style={{fontSize:10,fontWeight:400,color:"#64748b",marginLeft:6}}>written by Â· approved by {approver.name}</span>}
+                {u.approvedBy&&approver&&<span style={{fontSize:10,fontWeight:400,color:"#64748b",marginLeft:6}}>written by · approved by {approver.name}</span>}
               </div>
               <div style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</div>
             </div>
@@ -357,12 +357,12 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
             </div>
           </div>
 
-          {/* â”€â”€ TEXT with clickable links â”€â”€ */}
+          {/* ── TEXT with clickable links ── */}
           {u.text&&<div style={{fontSize:13,color:isSuperseded?"#94a3b8":"#374151",lineHeight:1.6,paddingLeft:38,marginBottom:8,textDecoration:isSuperseded?"none":"none"}}>
             <RenderText text={u.text}/>
           </div>}
 
-          {/* â”€â”€ ATTACHMENTS â”€â”€ */}
+          {/* ── ATTACHMENTS ── */}
           {u.attachments&&u.attachments.length>0&&<div style={{paddingLeft:38}}>
             {u.attachments.map(f=>{
               const isImg=f.type&&f.type.startsWith("image/");
@@ -373,40 +373,40 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
                       onClick={()=>setLightboxItem({src:f.data,name:f.name})}
                       style={{width:"100%",borderRadius:7,border:"1px solid #e2e8f0",display:"block",objectFit:"contain",cursor:"zoom-in"}}/>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:3}}>
-                      <span style={{fontSize:10,color:"#64748b"}}>ğŸ” Tap to enlarge Â· {f.name}</span>
-                      <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>â¬‡ Save</a>
+                      <span style={{fontSize:10,color:"#64748b"}}>🔍 Tap to enlarge · {f.name}</span>
+                      <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
                     </div>
                   </div>
                   :<a href={f.data} download={f.name} style={{display:"inline-flex",alignItems:"center",gap:7,padding:"6px 11px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:11,color:"#1e40af",fontWeight:600,textDecoration:"none"}}>
                     <span style={{fontSize:15}}>{FILE_ICON(f.type)}</span>
                     <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{f.name}</span>
                     <span style={{color:"#94a3b8",fontSize:10,flexShrink:0}}>({fmtBytes(f.size)})</span>
-                    <span style={{color:"#1e40af",fontSize:10,flexShrink:0}}>â¬‡</span>
+                    <span style={{color:"#1e40af",fontSize:10,flexShrink:0}}>⬇</span>
                   </a>}
               </div>;
             })}
           </div>}
 
-          {/* â”€â”€ FOOTER: supersede button + lock + admin delete â”€â”€ */}
+          {/* ── FOOTER: supersede button + lock + admin delete ── */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:8,paddingLeft:38,flexWrap:"wrap",gap:6}}>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>ğŸ”’ This record cannot be edited</span>
+              <span style={{fontSize:10,color:"#94a3b8",fontStyle:"italic"}}>🔒 This record cannot be edited</span>
               {isAdmin&&u.type!=="system"&&<button
                 onClick={()=>{if(window.confirm("Permanently delete this update record? This cannot be undone."))onDeleteUpdate(u.id);}}
                 style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff0f0",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer"}}>
-                ğŸ—‘ Delete
+                🗑 Delete
               </button>}
             </div>
             <div style={{display:"flex",gap:6}}>
               {!isSuperseded&&!isPending&&u.type!=="system"&&canPostDirect&&<button
                 onClick={()=>{setSupersedeTarget(u);setSuggestMode(false);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
                 style={{fontSize:10,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
-                â†©ï¸ Supersede This
+                ↩️ Supersede This
               </button>}
               {!isSuperseded&&!isPending&&u.type!=="system"&&!canPostDirect&&<button
                 onClick={()=>{setSupersedeTarget(u);setSuggestMode(true);setText("");setFiles([]);setTimeout(()=>document.getElementById("update-textarea")?.focus(),100);}}
                 style={{fontSize:10,color:"#8b5cf6",fontWeight:700,background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"3px 9px",cursor:"pointer"}}>
-                ğŸ’¡ Suggest Update
+                💡 Suggest Update
               </button>}
             </div>
           </div>
@@ -414,43 +414,43 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
       })}
     </div>
 
-    {/* â”€â”€ SUPERSEDE TARGET INDICATOR â”€â”€ */}
+    {/* ── SUPERSEDE TARGET INDICATOR ── */}
     {supersedeTarget&&<div style={{background:"#fff7ed",border:"1.5px solid #f97316",borderRadius:8,padding:"8px 12px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
       <div>
-        <div style={{fontSize:11,fontWeight:700,color:"#f97316"}}>â†©ï¸ {suggestMode?"Suggesting update to supersede:":"Superseding update from:"} {getMember(supersedeTarget.authorId)?.name} Â· {fmtDT(supersedeTarget.timestamp)}</div>
-        <div style={{fontSize:11,color:"#92400e",marginTop:2,fontStyle:"italic"}}>"{supersedeTarget.text?.slice(0,60)}{supersedeTarget.text?.length>60?"â€¦":""}"</div>
+        <div style={{fontSize:11,fontWeight:700,color:"#f97316"}}>↩️ {suggestMode?"Suggesting update to supersede:":"Superseding update from:"} {getMember(supersedeTarget.authorId)?.name} · {fmtDT(supersedeTarget.timestamp)}</div>
+        <div style={{fontSize:11,color:"#92400e",marginTop:2,fontStyle:"italic"}}>"{supersedeTarget.text?.slice(0,60)}{supersedeTarget.text?.length>60?"…":""}"</div>
       </div>
-      <button onClick={()=>{setSupersedeTarget(null);setSuggestMode(false);}} style={{background:"none",border:"none",color:"#f97316",fontSize:16,cursor:"pointer",flexShrink:0}}>âœ•</button>
+      <button onClick={()=>{setSupersedeTarget(null);setSuggestMode(false);}} style={{background:"none",border:"none",color:"#f97316",fontSize:16,cursor:"pointer",flexShrink:0}}>✕</button>
     </div>}
 
-    {/* â”€â”€ SUGGEST MODE HEADER â”€â”€ */}
+    {/* ── SUGGEST MODE HEADER ── */}
     {!canPostDirect&&!suggestMode&&!supersedeTarget&&<div style={{background:"#f5f3ff",border:"1px solid #c4b5fd",borderRadius:7,padding:"7px 12px",marginBottom:8,fontSize:11,color:"#7c3aed"}}>
-      ğŸ’¡ You can suggest an update â€” it will be reviewed by Admin/Assignor/Assignee before posting.
+      💡 You can suggest an update — it will be reviewed by Admin/Assignor/Assignee before posting.
     </div>}
 
-    {/* â”€â”€ STAGED FILES â”€â”€ */}
+    {/* ── STAGED FILES ── */}
     {files.length>0&&<div style={{background:"#f0f9ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
-      <div style={{fontSize:11,fontWeight:700,color:"#1e40af",marginBottom:6}}>ğŸ“ Files staged â€” add a description below:</div>
+      <div style={{fontSize:11,fontWeight:700,color:"#1e40af",marginBottom:6}}>📎 Files staged — add a description below:</div>
       {files.map(f=><div key={f.id} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 0",borderBottom:"1px solid #dbeafe"}}>
         <span style={{fontSize:14}}>{FILE_ICON(f.type)}</span>
         <span style={{fontSize:12,color:"#1e293b",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
         <span style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</span>
-        <button onClick={()=>removeFile(f.id)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:14,padding:"0 4px"}}>âœ•</button>
+        <button onClick={()=>removeFile(f.id)} style={{background:"none",border:"none",color:"#dc2626",cursor:"pointer",fontSize:14,padding:"0 4px"}}>✕</button>
       </div>)}
     </div>}
 
-    {/* â”€â”€ INPUT BOX â”€â”€ */}
+    {/* ── INPUT BOX ── */}
     <div style={{border:`1.5px solid ${suggestMode?"#c4b5fd":"#e2e8f0"}`,borderRadius:9,overflow:"hidden",background:"#fff"}}>
       <textarea id="update-textarea" value={text} onChange={e=>setText(e.target.value)}
         placeholder={
-          suggestMode?"ğŸ’¡ Write your suggested update â€” it will be sent for approval before postingâ€¦"
-          :supersedeTarget?"â†©ï¸ Write the updated information that supersedes the aboveâ€¦"
-          :!canPostDirect?"ğŸ’¡ Write your suggested update â€” it will be sent for approvalâ€¦"
-          :"Add an update, note or status changeâ€¦ (Cannot be edited after posting)"}
+          suggestMode?"💡 Write your suggested update — it will be sent for approval before posting…"
+          :supersedeTarget?"↩️ Write the updated information that supersedes the above…"
+          :!canPostDirect?"💡 Write your suggested update — it will be sent for approval…"
+          :"Add an update, note or status change… (Cannot be edited after posting)"}
         style={{width:"100%",padding:"10px 12px",border:"none",resize:"vertical",minHeight:80,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:suggestMode?"#faf5ff":files.length>0&&!text.trim()?"#fffbf5":"#f8fafc",outline:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"#f1f5f9",borderTop:"1px solid #e2e8f0",flexWrap:"wrap",gap:6}}>
         <button onClick={()=>fileRef.current?.click()} style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          ğŸ“ Attach File
+          📎 Attach File
         </button>
         <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -458,19 +458,19 @@ function UpdatesTab({task,updates,members,currentUser,isAdmin,isAssignor,isAssig
           <button onClick={submit} disabled={!canPost} style={{padding:"7px 20px",borderRadius:6,border:"none",
             background:!canPost?"#e2e8f0":(suggestMode||!canPostDirect)?"#7c3aed":"#0f2557",
             color:canPost?"#fff":"#94a3b8",fontSize:12,fontWeight:700,cursor:canPost?"pointer":"default"}}>
-            {(suggestMode||!canPostDirect)?"ğŸ’¡ Submit for Approval":"ğŸ“Œ Post Update (Permanent)"}
+            {(suggestMode||!canPostDirect)?"💡 Submit for Approval":"📌 Post Update (Permanent)"}
           </button>
         </div>
       </div>
     </div>
     <div style={{fontSize:10,color:"#94a3b8",marginTop:6,textAlign:"center"}}>
-      {canPostDirect?"Files must always have a description â€” this keeps the audit trail meaningful."
+      {canPostDirect?"Files must always have a description — this keeps the audit trail meaningful."
       :"Your suggestion will only be visible to you and approvers until approved."}
     </div>
   </div>;
 }
 
-/* â”€â”€ MESSAGES TAB â”€â”€ */
+/* ── MESSAGES TAB ── */
 function MessagesTab({task,messages,members,currentUser,onSendMessage}){
   const [text,setText]=useState("");
   const [urgent,setUrgent]=useState(false);
@@ -502,14 +502,14 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
         const mentionedMe=msg.mentions?.includes(currentUser.id);
         const aColor=memberColor(msg.authorId);
         return<div key={msg.id}>
-          {msg.urgent&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",borderRadius:5,padding:"3px 0",marginBottom:4}}>ğŸš¨ URGENT â€“ IMMEDIATE ATTENTION REQUIRED</div>}
+          {msg.urgent&&<div style={{textAlign:"center",fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",borderRadius:5,padding:"3px 0",marginBottom:4}}>🚨 URGENT – IMMEDIATE ATTENTION REQUIRED</div>}
           <div style={{display:"flex",gap:8,alignItems:"flex-start",flexDirection:isMe?"row-reverse":"row"}}>
             <Avatar name={author.name} size={32} color={aColor}/>
             <div style={{maxWidth:"75%"}}>
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexDirection:isMe?"row-reverse":"row"}}>
                 <span style={{fontSize:12,fontWeight:800,color:isMe?"#0f2557":aColor}}>{isMe?"You":author.name}</span>
                 <span style={{fontSize:10,color:"#94a3b8"}}>{fmtDT(msg.timestamp)}</span>
-                {msg.urgent&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700}}>ğŸš¨ URGENT</span>}
+                {msg.urgent&&<span style={{fontSize:10,color:"#dc2626",fontWeight:700}}>🚨 URGENT</span>}
               </div>
               <div style={{background:isMe?"#0f2557":mentionedMe?"#fef9c3":"#f1f5f9",borderRadius:10,padding:"9px 12px",border:mentionedMe?"1.5px solid #fbbf24":"none"}}>
                 {msg.text&&<div style={{fontSize:13,color:isMe?"#fff":"#1e293b",lineHeight:1.5,whiteSpace:"pre-wrap"}}>
@@ -531,13 +531,13 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
     </div>}
     {files.length>0&&<div style={{padding:"6px 10px",background:"#f8fafc",borderRadius:7,marginBottom:6,border:"1px solid #e2e8f0"}}><InlineFiles files={files}/></div>}
     <div style={{border:"1.5px solid #e2e8f0",borderRadius:9,overflow:"hidden",background:"#fff"}}>
-      <textarea value={text} onChange={e=>handleText(e.target.value)} onKeyDown={handleKey} placeholder="Type a messageâ€¦ @ to mention, Enter to send" style={{width:"100%",padding:"10px 12px",border:"none",resize:"none",height:58,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#fff",outline:"none"}}/>
+      <textarea value={text} onChange={e=>handleText(e.target.value)} onKeyDown={handleKey} placeholder="Type a message… @ to mention, Enter to send" style={{width:"100%",padding:"10px 12px",border:"none",resize:"none",height:58,fontSize:13,fontFamily:"inherit",color:"#1e293b",background:"#fff",outline:"none"}}/>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"#f8fafc",borderTop:"1px solid #e2e8f0"}}>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>ğŸ“</button>
+          <button onClick={()=>fileRef.current?.click()} style={{padding:"5px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,fontWeight:600,cursor:"pointer"}}>📎</button>
           <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
           <button onClick={()=>setUrgent(u=>!u)} style={{padding:"5px 11px",borderRadius:5,border:`1.5px solid ${urgent?"#dc2626":"#e2e8f0"}`,background:urgent?"#fee2e2":"#fff",color:urgent?"#dc2626":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-            ğŸš¨ {urgent?"URGENT":"Urgent"}
+            🚨 {urgent?"URGENT":"Urgent"}
           </button>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
@@ -549,7 +549,7 @@ function MessagesTab({task,messages,members,currentUser,onSendMessage}){
   </div>;
 }
 
-/* â”€â”€ DELETE SECTION â”€â”€ */
+/* ── DELETE SECTION ── */
 function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,onRequestDelete}){
   const [showRequestForm,setShowRequestForm]=useState(false);
   const [reason,setReason]=useState("");
@@ -563,30 +563,30 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
   };
   return<div style={{marginTop:18}}>
     {pending&&<div style={{padding:"10px 14px",background:"#fef3c7",borderRadius:8,border:"1.5px solid #fbbf24",marginBottom:12}}>
-      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:3}}>â³ Delete Request Pending</div>
+      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:3}}>⏳ Delete Request Pending</div>
       <div style={{fontSize:12,color:"#92400e"}}>Reason: "{pending.reason}"</div>
-      <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Submitted {fmtDT(pending.timestamp)} Â· Awaiting Admin approval</div>
+      <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>Submitted {fmtDT(pending.timestamp)} · Awaiting Admin approval</div>
     </div>}
     {allReqs.filter(r=>r.status!=="pending").map(r=><div key={r.id} style={{padding:"8px 12px",background:r.status==="approved"?"#fee2e2":"#f0fdf4",borderRadius:7,border:`1px solid ${r.status==="approved"?"#fecaca":"#bbf7d0"}`,marginBottom:8,fontSize:11}}>
-      <span style={{fontWeight:700,color:r.status==="approved"?"#991b1b":"#166534"}}>{r.status==="approved"?"âœ… Delete Approved":"âŒ Delete Rejected"}</span>
+      <span style={{fontWeight:700,color:r.status==="approved"?"#991b1b":"#166534"}}>{r.status==="approved"?"✅ Delete Approved":"❌ Delete Rejected"}</span>
       <span style={{color:"#94a3b8",marginLeft:8}}>{fmtDT(r.reviewedAt)}</span>
       {r.reviewNote&&<div style={{color:"#475569",marginTop:2}}>Note: {r.reviewNote}</div>}
     </div>)}
     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
       {isAdmin&&<button onClick={()=>{if(window.confirm("Permanently delete? This is irreversible."))onDeleteAdmin();}} style={{padding:"9px 16px",borderRadius:7,border:"1.5px solid #dc2626",background:"#fff",color:"#dc2626",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-        ğŸ—‘ Admin Delete
+        🗑 Admin Delete
       </button>}
       {!isAdmin&&isInvolved&&!pending&&!task.deleted&&<button onClick={()=>setShowRequestForm(v=>!v)} style={{padding:"9px 16px",borderRadius:7,border:"1.5px solid #f97316",background:"#fff",color:"#f97316",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-        ğŸ“‹ Request Deletion
+        📋 Request Deletion
       </button>}
       {!isAdmin&&!isInvolved&&!pending&&<div style={{padding:"9px 12px",background:"#f8fafc",borderRadius:7,border:"1.5px solid #e2e8f0",color:"#94a3b8",fontSize:11,display:"flex",alignItems:"center",gap:5}}>
-        ğŸ”’ Only assignee/assignor can request deletion
+        🔒 Only assignee/assignor can request deletion
       </div>}
     </div>
     {showRequestForm&&<div style={{marginTop:10,padding:"14px",background:"#fff7ed",borderRadius:8,border:"1.5px solid #fed7aa"}}>
-      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:8}}>ğŸ“‹ Submit Delete Request</div>
+      <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:8}}>📋 Submit Delete Request</div>
       <div style={{fontSize:11,color:"#92400e",marginBottom:10}}>Your request will be sent to Admin for approval. The task remains active until approved.</div>
-      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="State your reason for requesting deletionâ€¦" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:6,padding:"8px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:72,outline:"none",background:"#fffbf5",boxSizing:"border-box"}}/>
+      <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="State your reason for requesting deletion…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:6,padding:"8px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:72,outline:"none",background:"#fffbf5",boxSizing:"border-box"}}/>
       <div style={{display:"flex",gap:8,marginTop:8}}>
         <button onClick={submitRequest} style={{padding:"7px 18px",borderRadius:6,border:"none",background:"#f97316",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>Submit Request</button>
         <button onClick={()=>{setShowRequestForm(false);setReason("");}} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
@@ -595,7 +595,7 @@ function DeleteSection({task,currentUser,isAdmin,deleteRequests,onDeleteAdmin,on
   </div>;
 }
 
-/* â”€â”€ TASK DETAIL MODAL â”€â”€ */
+/* ── TASK DETAIL MODAL ── */
 function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,updates,messages,currentUser,isAdmin,deleteRequests,onClose,onEdit,onDeleteAdmin,onRequestDelete,onAddUpdate,onSendMessage,onAttachmentChange,onSaveTask,onOpenLinked,onApproveUpdate,onRejectUpdate,onDeleteUpdate}){
   const [tab,setTab]=useState("info");
   const [editingDueDate,setEditingDueDate]=useState(false);
@@ -629,7 +629,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
     setCompleting(true);
     await onSaveTask({...task,status:"Completed",completedDate:today()});
     await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
-      text:`âœ… Task marked as Completed by ${currentUser.name} on ${fmtDate(today())}.`,
+      text:`✅ Task marked as Completed by ${currentUser.name} on ${fmtDate(today())}.`,
       attachments:[],timestamp:nowISO(),type:"system"});
     setCompleting(false);
   };
@@ -639,7 +639,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
     setUndoingComplete(true);
     await onSaveTask({...task,status:"In Progress",completedDate:""});
     await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
-      text:`â†©ï¸ Completion undone by ${currentUser.name}. Status reverted to In Progress.`,
+      text:`↩️ Completion undone by ${currentUser.name}. Status reverted to In Progress.`,
       attachments:[],timestamp:nowISO(),type:"system"});
     setUndoingComplete(false);
   };
@@ -650,7 +650,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
     const old=task.dueDate?fmtDate(task.dueDate):"(none)";
     await onSaveTask({...task,dueDate:newDueDate,dueTime:newDueTime});
     await onAddUpdate({id:uid(),taskId:task.id,authorId:currentUser.id,
-      text:`ğŸ“… Due date updated by ${currentUser.name}: ${old} â†’ ${fmtDate(newDueDate)} ${newDueTime}.`,
+      text:`📅 Due date updated by ${currentUser.name}: ${old} → ${fmtDate(newDueDate)} ${newDueTime}.`,
       attachments:[],timestamp:nowISO(),type:"system"});
     setSavingDue(false);
     setEditingDueDate(false);
@@ -659,7 +659,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
   const TABS=[
     {id:"info",label:"Info"},
     {id:"updates",label:`Updates${taskUpdates.length?` (${taskUpdates.length})`:""}`},
-    {id:"messages",label:`Chat${taskMsgs.length?` (${taskMsgs.length})`:""}${urgentMsgs?" ğŸš¨":""}`},
+    {id:"messages",label:`Chat${taskMsgs.length?` (${taskMsgs.length})`:""}${urgentMsgs?" 🚨":""}`},
   ];
   const row=(label,val)=><div style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #f1f5f9",alignItems:"flex-start"}}>
     <span style={{fontSize:12,color:"#94a3b8",fontWeight:600,flexShrink:0,marginRight:16,minWidth:110}}>{label}</span>
@@ -670,33 +670,33 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
     {infoLightbox&&<Lightbox src={infoLightbox.src} name={infoLightbox.name} onClose={()=>setInfoLightbox(null)}/>}
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
       <div style={{flex:1,paddingRight:14}}>
-        {task.isPersonal&&<span style={{fontSize:10,background:"#ede9fe",color:"#7c3aed",borderRadius:4,padding:"2px 8px",fontWeight:700,marginBottom:5,display:"inline-block"}}>ğŸ‘¤ PERSONAL</span>}
+        {task.isPersonal&&<span style={{fontSize:10,background:"#ede9fe",color:"#7c3aed",borderRadius:4,padding:"2px 8px",fontWeight:700,marginBottom:5,display:"inline-block"}}>👤 PERSONAL</span>}
         <div style={{fontSize:11,color:"#c9a227",fontWeight:800,letterSpacing:"0.1em",marginBottom:3}}>{task.ref}</div>
         <h2 style={{margin:0,fontSize:16,color:"#0f2557",fontWeight:800,lineHeight:1.3}}>{task.task}</h2>
         {proj&&<div style={{fontSize:12,color:"#64748b",marginTop:3}}>{proj.name}</div>}
       </div>
-      <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8",flexShrink:0}}>âœ•</button>
+      <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8",flexShrink:0}}>✕</button>
     </div>
 
-    {/* â”€â”€ QUICK ACTION BUTTONS â”€â”€ */}
+    {/* ── QUICK ACTION BUTTONS ── */}
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
       {canComplete&&!isCompleted&&<button onClick={handleMarkComplete} disabled={completing} style={{padding:"8px 16px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#166534,#16a34a)",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:completing?0.7:1}}>
-        {completing?"Savingâ€¦":"âœ… Mark Complete"}
+        {completing?"Saving…":"✅ Mark Complete"}
       </button>}
       {canComplete&&isCompleted&&(isAdmin||isAssignor)&&<button onClick={handleUndoComplete} disabled={undoingComplete} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #64748b",background:"#fff",color:"#64748b",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6,opacity:undoingComplete?0.7:1}}>
-        {undoingComplete?"Savingâ€¦":"â†©ï¸ Undo Complete"}
+        {undoingComplete?"Saving…":"↩️ Undo Complete"}
       </button>}
       {canEditDue&&!editingDueDate&&<button onClick={()=>{setEditingDueDate(true);setNewDueDate(task.dueDate||"");setNewDueTime(task.dueTime||"18:00");}} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #1e40af",background:"#fff",color:"#1e40af",fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-        ğŸ“… Edit Due Date
+        📅 Edit Due Date
       </button>}
       {(isAdmin||isAssignor)&&<button onClick={onEdit} style={{padding:"8px 16px",borderRadius:7,border:"1.5px solid #0f2557",background:"#fff",color:"#0f2557",fontSize:12,fontWeight:700,cursor:"pointer"}}>
-        âœï¸ Edit Task
+        ✏️ Edit Task
       </button>}
     </div>
 
-    {/* â”€â”€ INLINE DUE DATE EDITOR â”€â”€ */}
+    {/* ── INLINE DUE DATE EDITOR ── */}
     {editingDueDate&&<div style={{background:"#eff6ff",borderRadius:9,padding:"14px",marginBottom:14,border:"1.5px solid #bfdbfe"}}>
-      <div style={{fontSize:12,fontWeight:800,color:"#1e40af",marginBottom:10}}>ğŸ“… Update Due Date</div>
+      <div style={{fontSize:12,fontWeight:800,color:"#1e40af",marginBottom:10}}>📅 Update Due Date</div>
       <div style={{display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
         <div>
           <div style={{fontSize:10,color:"#64748b",fontWeight:700,marginBottom:4}}>DATE</div>
@@ -708,7 +708,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={handleSaveDueDate} disabled={savingDue} style={{padding:"8px 18px",borderRadius:6,border:"none",background:"#1e40af",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",opacity:savingDue?0.7:1}}>
-            {savingDue?"Savingâ€¦":"Save"}
+            {savingDue?"Saving…":"Save"}
           </button>
           <button onClick={()=>setEditingDueDate(false)} style={{padding:"8px 12px",borderRadius:6,border:"1.5px solid #bfdbfe",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
         </div>
@@ -717,36 +717,36 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
 
     <div style={{display:"flex",gap:7,marginBottom:16,flexWrap:"wrap"}}>
       <Badge text={task.status} color={sm.color} bg={sm.bg}/><Badge text={pm.label} color={pm.color} bg={pm.color+"18"}/>
-      {assignee&&<Badge text={`ğŸ‘¤ ${assignee.name}`} color="#475569" bg="#f1f5f9"/>}
-      {urgentMsgs>0&&<Badge text={`ğŸš¨ ${urgentMsgs} urgent`} color="#991b1b" bg="#fee2e2"/>}
+      {assignee&&<Badge text={`👤 ${assignee.name}`} color="#475569" bg="#f1f5f9"/>}
+      {urgentMsgs>0&&<Badge text={`🚨 ${urgentMsgs} urgent`} color="#991b1b" bg="#fee2e2"/>}
     </div>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:16}}>
       {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:"7px 14px",border:"none",borderBottom:tab===t.id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===t.id?"#0f2557":"#94a3b8",fontSize:12,fontWeight:tab===t.id?800:500,cursor:"pointer"}}>{t.label}</button>)}
     </div>
     {tab==="info"&&<div>
       {row("Ref",task.ref)}{task.taskType&&row("Type",<span style={{background:"#eff6ff",color:"#1e40af",borderRadius:5,padding:"2px 10px",fontSize:12,fontWeight:700}}>{task.taskType}</span>)}{row("Prepared",fmtDate(task.preparedDate))}{row("Due Date",<DueChip date={task.dueDate} time={task.dueTime}/>)}
-      {row("Completed",task.completedDate?<span style={{color:"#166534",fontWeight:600}}>âœ… {fmtDate(task.completedDate)}</span>:"â€“")}
-      {row("Assignor",assignor?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignor.name} size={20}/>{assignor.name}</div>:"â€“")}
-      {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"â€“")}
+      {row("Completed",task.completedDate?<span style={{color:"#166534",fontWeight:600}}>✅ {fmtDate(task.completedDate)}</span>:"–")}
+      {row("Assignor",assignor?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignor.name} size={20}/>{assignor.name}</div>:"–")}
+      {row("Assignee",assignee?<div style={{display:"flex",alignItems:"center",gap:6}}><Avatar name={assignee.name} size={20}/>{assignee.name}</div>:"–")}
       {ccMembers.length>0&&row("CC",<div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>{ccMembers.map(m=><Badge key={m.id} text={m.name} color="#475569" bg="#f1f5f9" small/>)}</div>)}
-      {task.taskTypeId&&row("Task Type",<span style={{padding:"2px 10px",background:"#eff6ff",color:"#1e40af",borderRadius:5,fontSize:12,fontWeight:700}}>{taskTypes?.find(tt=>tt.id===task.taskTypeId)?.name||"â€“"}</span>)}
-      {task.companyId&&row("Company",<span style={{padding:"2px 10px",background:"#f0fdf4",color:"#166534",borderRadius:5,fontSize:12,fontWeight:700}}>{(()=>{const co=companies?.find(c=>c.id===task.companyId);return co?`${co.code} â€” ${co.name}`:"â€“";})()}</span>)}
+      {task.taskTypeId&&row("Task Type",<span style={{padding:"2px 10px",background:"#eff6ff",color:"#1e40af",borderRadius:5,fontSize:12,fontWeight:700}}>{taskTypes?.find(tt=>tt.id===task.taskTypeId)?.name||"–"}</span>)}
+      {task.companyId&&row("Company",<span style={{padding:"2px 10px",background:"#f0fdf4",color:"#166534",borderRadius:5,fontSize:12,fontWeight:700}}>{(()=>{const co=companies?.find(c=>c.id===task.companyId);return co?`${co.code} — ${co.name}`:"–";})()}</span>)}
       {task.remarks&&row("Remarks",task.remarks)}
       {(()=>{
         // Collect all updates that have attachments for this task
         const updatesWithFiles=updates.filter(u=>u.taskId===task.id&&u.attachments&&u.attachments.length>0).sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
         if(!updatesWithFiles.length)return null;
         return<div style={{padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
-          <div style={{fontSize:12,color:"#94a3b8",fontWeight:600,marginBottom:10}}>ğŸ“ Attachments ({updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)} file{updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)!==1?"s":""})</div>
+          <div style={{fontSize:12,color:"#94a3b8",fontWeight:600,marginBottom:10}}>📎 Attachments ({updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)} file{updatesWithFiles.reduce((n,u)=>n+u.attachments.length,0)!==1?"s":""})</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {updatesWithFiles.map(u=>{
               const author=members.find(m=>m.id===u.authorId)||{name:"?"};
               return<div key={u.id} style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",overflow:"hidden"}}>
-                {/* Context header â€” what is this file for */}
+                {/* Context header — what is this file for */}
                 <div style={{padding:"7px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",display:"flex",alignItems:"flex-start",gap:8}}>
                   <Avatar name={author.name} size={20} color="#0f2557"/>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:11,fontWeight:700,color:"#0f2557"}}>{author.name} Â· <span style={{fontWeight:400,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</span></div>
+                    <div style={{fontSize:11,fontWeight:700,color:"#0f2557"}}>{author.name} · <span style={{fontWeight:400,color:"#94a3b8"}}>{fmtDT(u.timestamp)}</span></div>
                     {u.type!=="system"&&u.text&&<div style={{fontSize:12,color:"#374151",marginTop:2,fontStyle:"italic"}}>"{u.text}"</div>}
                   </div>
                 </div>
@@ -761,8 +761,8 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
                             onClick={()=>setInfoLightbox({src:f.data,name:f.name})}
                             style={{width:"100%",borderRadius:6,border:"1px solid #e2e8f0",display:"block",objectFit:"contain",cursor:"zoom-in"}}/>
                           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:3}}>
-                            <span style={{fontSize:10,color:"#64748b"}}>ğŸ” Tap to enlarge Â· {f.name}</span>
-                            <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>â¬‡ Save</a>
+                            <span style={{fontSize:10,color:"#64748b"}}>🔍 Tap to enlarge · {f.name}</span>
+                            <a href={f.data} download={f.name} style={{fontSize:10,color:"#1e40af",fontWeight:700,textDecoration:"none"}}>⬇ Save</a>
                           </div>
                         </div>
                         :<a href={f.data} download={f.name} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,textDecoration:"none"}}>
@@ -771,7 +771,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
                             <div style={{fontSize:12,fontWeight:600,color:"#1e40af",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</div>
                             <div style={{fontSize:10,color:"#94a3b8"}}>{fmtBytes(f.size)}</div>
                           </div>
-                          <span style={{fontSize:11,color:"#1e40af",fontWeight:700,flexShrink:0}}>â¬‡ Save</span>
+                          <span style={{fontSize:11,color:"#1e40af",fontWeight:700,flexShrink:0}}>⬇ Save</span>
                         </a>}
                     </div>;
                   })}
@@ -802,10 +802,10 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
               <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{lt.task}</div>
             </div>
             {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-              <span style={{fontSize:9,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:4,padding:"1px 5px"}}>âš  Blocking</span>
-              <span style={{fontSize:9,color:"#94a3b8"}}>tap to nudge â†’</span>
+              <span style={{fontSize:9,color:"#f97316",fontWeight:700,background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:4,padding:"1px 5px"}}>⚠ Blocking</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to nudge →</span>
             </div>}
-            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>âœ…</span>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
           </div>;
         })}
       </div>}
@@ -829,10 +829,10 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
               <div style={{fontSize:11,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:2}}>{dt.task}</div>
             </div>
             {isBlocked&&<div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
-              <span style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff5f5",border:"1px solid #fecaca",borderRadius:4,padding:"1px 5px"}}>ğŸ”´ Not Done</span>
-              <span style={{fontSize:9,color:"#94a3b8"}}>tap to check â†’</span>
+              <span style={{fontSize:9,color:"#dc2626",fontWeight:700,background:"#fff5f5",border:"1px solid #fecaca",borderRadius:4,padding:"1px 5px"}}>🔴 Not Done</span>
+              <span style={{fontSize:9,color:"#94a3b8"}}>tap to check →</span>
             </div>}
-            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>âœ…</span>}
+            {!isBlocked&&<span style={{fontSize:11,color:"#166534",flexShrink:0}}>✅</span>}
           </div>;
         })}
       </div>}
@@ -844,7 +844,7 @@ function TaskDetailModal({task,tasks,members,projects,taskTypes,companies,update
   </div>;
 }
 
-/* â”€â”€ KPI VIEW â”€â”€ */
+/* ── KPI VIEW ── */
 function KPIView({tasks,members,projects,moods}){
   const [kpiBy,setKpiBy]=useState("project");
   const et=tasks.filter(t=>!t.isPersonal).map(t=>{
@@ -864,7 +864,7 @@ function KPIView({tasks,members,projects,moods}){
   const todayMoods=Object.entries(moods).filter(([k])=>k.startsWith(todayStr));
   return<div style={{padding:24}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
-      <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:0}}>ğŸ“Š KPI Analysis</h2>
+      <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:0}}>📊 KPI Analysis</h2>
       <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
         {[["project","By Project"],["assignee","By Assignee"]].map(([v,l])=><button key={v} onClick={()=>setKpiBy(v)} style={{padding:"6px 14px",borderRadius:6,border:"none",background:kpiBy===v?"#0f2557":"transparent",color:kpiBy===v?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>)}
       </div>
@@ -902,7 +902,7 @@ function KPIView({tasks,members,projects,moods}){
             <span style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{g.label}</span>
           </div>
           <div style={{display:"flex",gap:7}}>
-            {s.overdue>0&&<Badge text={`âš  ${s.overdue} overdue`} color="#991b1b" bg="#fee2e2" small/>}
+            {s.overdue>0&&<Badge text={`⚠ ${s.overdue} overdue`} color="#991b1b" bg="#fee2e2" small/>}
             <Badge text={`${s.compRate}% done`} color={s.compRate>=80?"#166534":s.compRate>=50?"#92400e":"#991b1b"} bg={s.compRate>=80?"#dcfce7":s.compRate>=50?"#fef3c7":"#fee2e2"} small/>
           </div>
         </div>
@@ -924,13 +924,13 @@ function KPIView({tasks,members,projects,moods}){
   </div>;
 }
 
-/* â”€â”€ TASK TYPES ADMIN â”€â”€ */
+/* ── TASK TYPES ADMIN ── */
 function TaskTypesAdmin({taskTypes=[],onSave}){
   const [editItem,setEditItem]=useState(null);
   const [newName,setNewName]=useState("");
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 12px",fontSize:13,color:"#1e293b",background:"#f8fafc",outline:"none",boxSizing:"border-box",fontFamily:"inherit"};
 
-  // Always sort A-Z â€” no manual reorder
+  // Always sort A-Z — no manual reorder
   const sorted=[...taskTypes].sort((a,b)=>a.name.localeCompare(b.name));
 
   const addType=()=>{
@@ -961,7 +961,7 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
     <div style={{marginBottom:14}}>
       <div style={{fontSize:13,color:"#64748b"}}>Admin-controlled task type categories.</div>
       <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>
-        Always sorted Aâ€“Z automatically. Add or rename â€” list reorders itself. ğŸ˜Š
+        Always sorted A–Z automatically. Add or rename — list reorders itself. 😊
       </div>
     </div>
 
@@ -969,11 +969,11 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
     <div style={{display:"flex",gap:8,marginBottom:16}}>
       <input style={{...inp,flex:1}} value={newName} onChange={e=>setNewName(e.target.value)}
         onKeyDown={e=>e.key==="Enter"&&addType()}
-        placeholder="New type name e.g. Inspection, Handoverâ€¦"/>
+        placeholder="New type name e.g. Inspection, Handover…"/>
       <button onClick={addType} style={{padding:"8px 18px",borderRadius:7,border:"none",background:"#0f2557",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0}}>+ Add</button>
     </div>
 
-    {/* List â€” auto A-Z, no reorder buttons */}
+    {/* List — auto A-Z, no reorder buttons */}
     <div style={{display:"flex",flexDirection:"column",gap:6}}>
       {sorted.map((t,idx)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"#fff",borderRadius:7,border:`1.5px solid ${t.active?"#e2e8f0":"#f1f5f9"}`,opacity:t.active?1:0.55}}>
         {/* A-Z index badge */}
@@ -993,7 +993,7 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
         <div style={{display:"flex",gap:5,flexShrink:0}}>
           {editItem!==t.id&&<button onClick={()=>setEditItem(t.id)}
             style={{padding:"3px 9px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>
-            âœï¸ Rename
+            ✏️ Rename
           </button>}
           <button onClick={()=>toggleActive(t.id)}
             style={{padding:"3px 9px",borderRadius:5,border:`1.5px solid ${t.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:t.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>
@@ -1003,12 +1003,12 @@ function TaskTypesAdmin({taskTypes=[],onSave}){
       </div>)}
     </div>
     <div style={{marginTop:10,fontSize:10,color:"#94a3b8",textAlign:"center"}}>
-      {sorted.filter(t=>t.active).length} active types Â· Click âœï¸ Rename to edit Â· Disabled types hidden from forms
+      {sorted.filter(t=>t.active).length} active types · Click ✏️ Rename to edit · Disabled types hidden from forms
     </div>
   </div>;
 }
 
-/* â”€â”€ TASK TYPES MANAGER â”€â”€ */
+/* ── TASK TYPES MANAGER ── */
 function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
   const [editItem,setEditItem]=useState(null);
   const [newName,setNewName]=useState("");
@@ -1035,7 +1035,7 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
   const handleDelete=async(tt)=>{
     const linked=tasks.filter(t=>t.taskTypeId===tt.id&&t.status!=="Completed"&&t.status!=="On Hold"&&!t.deleted);
     if(linked.length>0){
-      alert(`Cannot delete "${tt.name}" â€” ${linked.length} incomplete task(s) linked. Reassign them first.`);
+      alert(`Cannot delete "${tt.name}" — ${linked.length} incomplete task(s) linked. Reassign them first.`);
       return;
     }
     if(!window.confirm(`Delete task type "${tt.name}"? This cannot be undone.`))return;
@@ -1044,7 +1044,7 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
 
   return<div>
     <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <span style={{fontSize:13,color:"#64748b"}}>Manage task types. Always sorted Aâ€“Z. Cannot delete if tasks are linked.</span>
+      <span style={{fontSize:13,color:"#64748b"}}>Manage task types. Always sorted A–Z. Cannot delete if tasks are linked.</span>
     </div>
     {/* Add new */}
     <div style={{display:"flex",gap:8,marginBottom:16}}>
@@ -1068,7 +1068,7 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
               <span style={{fontSize:13,fontWeight:600,color:"#1e293b"}}>{tt.name}</span>
               <span style={{fontSize:10,color:"#94a3b8",marginLeft:10}}>
                 {linkedCount>0?`${linkedCount} task${linkedCount!==1?"s":""} linked`:"No tasks linked"}
-                {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>Â· {incompleteCount} incomplete</span>}
+                {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>· {incompleteCount} incomplete</span>}
               </span>
             </div>}
           <div style={{display:"flex",gap:6,flexShrink:0}}>
@@ -1077,8 +1077,8 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
                 <button onClick={()=>setEditItem(null)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Cancel</button></>
               :<><button onClick={()=>setEditItem({...tt})} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Edit</button>
                 <button onClick={()=>handleDelete(tt)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,cursor:"pointer"}}
-                  title={incompleteCount>0?"Cannot delete â€” incomplete tasks linked":""}>
-                  {incompleteCount>0?"ğŸ”’":"ğŸ—‘"}
+                  title={incompleteCount>0?"Cannot delete — incomplete tasks linked":""}>
+                  {incompleteCount>0?"🔒":"🗑"}
                 </button></>}
           </div>
         </div>;
@@ -1088,7 +1088,7 @@ function TaskTypesManager({taskTypes,tasks,onSave,onDelete}){
   </div>;
 }
 
-/* â”€â”€ COMPANIES MANAGER â”€â”€ */
+/* ── COMPANIES MANAGER ── */
 function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
   const [editItem,setEditItem]=useState(null);
   const [newCode,setNewCode]=useState("");
@@ -1116,7 +1116,7 @@ function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
   const handleDelete=async(co)=>{
     const linked=tasks.filter(t=>t.companyId===co.id&&t.status!=="Completed"&&!t.deleted);
     if(linked.length>0){
-      alert(`Cannot delete "${co.name}" â€” ${linked.length} active task(s) linked. Reassign first.`);return;
+      alert(`Cannot delete "${co.name}" — ${linked.length} active task(s) linked. Reassign first.`);return;
     }
     if(!window.confirm(`Delete "${co.name}"? Cannot be undone.`))return;
     await onDelete(co.id);
@@ -1125,7 +1125,7 @@ function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
   return<div>
     <div style={{marginBottom:14}}>
       <div style={{fontSize:13,color:"#64748b"}}>Manage related companies. Each task can be linked to a company.</div>
-      <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Short code shows in task list Â· Full name in task detail Â· Cannot delete if active tasks linked</div>
+      <div style={{fontSize:11,color:"#94a3b8",marginTop:2}}>Short code shows in task list · Full name in task detail · Cannot delete if active tasks linked</div>
     </div>
     {/* Add new */}
     <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
@@ -1153,14 +1153,14 @@ function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
                 <div style={{fontSize:13,fontWeight:600,color:"#1e293b"}}>{co.name}</div>
                 <div style={{fontSize:10,color:"#94a3b8",marginTop:1}}>
                   {linkedCount>0?`${linkedCount} task${linkedCount!==1?"s":""} linked`:"No tasks linked"}
-                  {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>Â· {incompleteCount} active</span>}
+                  {incompleteCount>0&&<span style={{color:"#f97316",marginLeft:6}}>· {incompleteCount} active</span>}
                 </div>
               </div>
               {!co.active&&<Badge text="Inactive" color="#94a3b8" bg="#f1f5f9" small/>}
               <div style={{display:"flex",gap:5,flexShrink:0}}>
-                <button onClick={()=>setEditItem({...co})} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>âœï¸ Edit</button>
+                <button onClick={()=>setEditItem({...co})} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>✏️ Edit</button>
                 <button onClick={()=>onSave({...co,active:!co.active})} style={{padding:"4px 10px",borderRadius:5,border:`1.5px solid ${co.active?"#fecaca":"#bbf7d0"}`,background:"#fff",color:co.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>{co.active?"Disable":"Enable"}</button>
-                <button onClick={()=>handleDelete(co)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,cursor:"pointer"}}>{incompleteCount>0?"ğŸ”’":"ğŸ—‘"}</button>
+                <button onClick={()=>handleDelete(co)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,cursor:"pointer"}}>{incompleteCount>0?"🔒":"🗑"}</button>
               </div>
             </div>}
         </div>;
@@ -1173,7 +1173,7 @@ function CompaniesManager({companies=[],tasks=[],onSave,onDelete}){
   </div>;
 }
 
-/* â”€â”€ ADMIN VIEW â”€â”€ */
+/* ── ADMIN VIEW ── */
 function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser,taskTypes,companies,onUpdateMembers,onUpdateProjects,onReviewDeleteRequest,onSetPassword,onSaveTaskTypes,onSaveTaskType,onDeleteTaskType,onSaveCompany,onDeleteCompany}){
   const [tab,setTab]=useState("projects");
   const [editProj,setEditProj]=useState(null);
@@ -1188,9 +1188,9 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   const pendingReqs=deleteRequests.filter(r=>r.status==="pending");
   const allReqs=[...deleteRequests].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   return<div style={{padding:26}}>
-    <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>âš™ï¸ Admin Settings</h2>
+    <h2 style={{fontSize:17,fontWeight:800,color:"#0f2557",margin:"0 0 18px"}}>⚙️ Admin Settings</h2>
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #f1f5f9",marginBottom:18}}>
-      {[["projects","ğŸ“ Projects"],["members","ğŸ‘¥ Members"],["tasktypes","ğŸ·ï¸ Task Types"],["companies","ğŸ¢ Companies"],["delreqs","ğŸ—‘ Delete Requests"],["audit","ğŸ“‹ Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
+      {[["projects","📁 Projects"],["members","👥 Members"],["tasktypes","🏷️ Task Types"],["companies","🏢 Companies"],["delreqs","🗑 Delete Requests"],["audit","📋 Audit Trail"]].map(([id,l])=><button key={id} onClick={()=>setTab(id)} style={{padding:"8px 18px",border:"none",borderBottom:tab===id?"2px solid #0f2557":"2px solid transparent",marginBottom:-2,background:"none",color:tab===id?"#0f2557":"#94a3b8",fontSize:13,fontWeight:tab===id?800:500,cursor:"pointer"}}>{l}</button>)}
     </div>
     {tab==="tasktypes"&&<div>
       <TaskTypesAdmin taskTypes={taskTypes} onSave={onSaveTaskTypes}/>
@@ -1243,12 +1243,12 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
         {!m.active&&<Badge text="Inactive" color="#94a3b8" bg="#f1f5f9" small/>}
         {m.id!==currentUser.id&&<button onClick={()=>setEditMember(m)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Edit</button>}
         {m.id!==currentUser.id&&<button onClick={()=>onUpdateMembers(members.map(x=>x.id===m.id?{...x,active:!x.active}:x))} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #e2e8f0",background:"#fff",color:m.active?"#dc2626":"#166534",fontSize:11,cursor:"pointer"}}>{m.active?"Deactivate":"Activate"}</button>}
-        {onSetPassword&&<button onClick={()=>onSetPassword(m)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #8b5cf6",background:"#fff",color:"#8b5cf6",fontSize:11,cursor:"pointer"}}>ğŸ”‘ Password</button>}
+        {onSetPassword&&<button onClick={()=>onSetPassword(m)} style={{padding:"4px 10px",borderRadius:5,border:"1.5px solid #8b5cf6",background:"#fff",color:"#8b5cf6",fontSize:11,cursor:"pointer"}}>🔑 Password</button>}
       </div>)}
     </div>}
     {tab==="delreqs"&&<div>
       {pendingReqs.length>0&&<div style={{background:"#fef3c7",borderRadius:8,padding:"10px 14px",marginBottom:14,border:"1.5px solid #fbbf24"}}>
-        <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:2}}>â³ {pendingReqs.length} Pending Delete Request{pendingReqs.length>1?"s":""} â€“ Action Required</div>
+        <div style={{fontSize:12,fontWeight:800,color:"#92400e",marginBottom:2}}>⏳ {pendingReqs.length} Pending Delete Request{pendingReqs.length>1?"s":""} – Action Required</div>
       </div>}
       {allReqs.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:13}}>No delete requests yet.</div>}
       {allReqs.map(r=>{
@@ -1261,11 +1261,11 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
               <div style={{fontSize:11,fontWeight:700,color:"#c9a227"}}>{task?.ref||r.taskId}</div>
               <div style={{fontSize:13,fontWeight:700,color:"#0f2557"}}>{task?.task||"(task deleted)"}</div>
             </div>
-            <Badge text={r.status==="pending"?"â³ Pending":r.status==="approved"?"âœ… Approved":"âŒ Rejected"} color={r.status==="pending"?"#92400e":r.status==="approved"?"#991b1b":"#166534"} bg={r.status==="pending"?"#fef3c7":r.status==="approved"?"#fee2e2":"#dcfce7"} small/>
+            <Badge text={r.status==="pending"?"⏳ Pending":r.status==="approved"?"✅ Approved":"❌ Rejected"} color={r.status==="pending"?"#92400e":r.status==="approved"?"#991b1b":"#166534"} bg={r.status==="pending"?"#fef3c7":r.status==="approved"?"#fee2e2":"#dcfce7"} small/>
           </div>
-          <div style={{fontSize:12,color:"#475569",marginBottom:4}}><span style={{fontWeight:700}}>Requested by:</span> {requester?.name||"â€“"} Â· {fmtDT(r.timestamp)}</div>
+          <div style={{fontSize:12,color:"#475569",marginBottom:4}}><span style={{fontWeight:700}}>Requested by:</span> {requester?.name||"–"} · {fmtDT(r.timestamp)}</div>
           <div style={{fontSize:12,color:"#475569",marginBottom:6,background:"#f8fafc",padding:"6px 10px",borderRadius:5}}><span style={{fontWeight:700}}>Reason:</span> "{r.reason}"</div>
-          {reviewer&&<div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Reviewed by {reviewer.name} on {fmtDT(r.reviewedAt)}{r.reviewNote?` â€“ "${r.reviewNote}"`:""}</div>}
+          {reviewer&&<div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>Reviewed by {reviewer.name} on {fmtDT(r.reviewedAt)}{r.reviewNote?` – "${r.reviewNote}"`:""}</div>}
           {r.status==="pending"&&<div>
             {reviewModal===r.id&&<div style={{marginBottom:8}}>
               <textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} placeholder="Add a note (optional)..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"7px 10px",fontSize:12,fontFamily:"inherit",resize:"vertical",minHeight:56,outline:"none",boxSizing:"border-box"}}/>
@@ -1273,8 +1273,8 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
             <div style={{display:"flex",gap:8}}>
               {reviewModal!==r.id&&<button onClick={()=>{setReviewModal(r.id);setReviewNote("");}} style={{padding:"6px 14px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Review</button>}
               {reviewModal===r.id&&<>
-                <button onClick={()=>{onReviewDeleteRequest(r.id,true,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#dc2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>âœ… Approve & Delete</button>
-                <button onClick={()=>{onReviewDeleteRequest(r.id,false,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#166534",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>âŒ Reject Request</button>
+                <button onClick={()=>{onReviewDeleteRequest(r.id,true,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#dc2626",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>✅ Approve & Delete</button>
+                <button onClick={()=>{onReviewDeleteRequest(r.id,false,reviewNote);setReviewModal(null);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#166534",color:"#fff",fontSize:12,fontWeight:700,cursor:"pointer"}}>❌ Reject Request</button>
                 <button onClick={()=>setReviewModal(null)} style={{padding:"6px 12px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:12,cursor:"pointer"}}>Cancel</button>
               </>}
             </div>
@@ -1289,7 +1289,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
       <CompaniesManager companies={companies} tasks={tasks} onSave={onSaveCompany} onDelete={onDeleteCompany}/>
     </div>}
     {tab==="audit"&&<div>
-      <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail â€“ all creates, updates, deletions and delete request decisions. Read-only.</div>
+      <div style={{fontSize:12,color:"#64748b",marginBottom:14}}>Complete system audit trail – all creates, updates, deletions and delete request decisions. Read-only.</div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:10,marginBottom:16}}>
         {[{label:"Total Events",n:updates.length,color:"#0f2557"},{label:"System Events",n:updates.filter(u=>u.type==="system").length,color:"#166534"},{label:"User Updates",n:updates.filter(u=>u.type==="comment").length,color:"#1e40af"},{label:"Deletion Events",n:updates.filter(u=>u.text&&u.text.includes("delete")).length,color:"#dc2626"},{label:"Briefing Acks",n:updates.filter(u=>u.type==="briefing_audit").length,color:"#7c3aed"}].map(s=><div key={s.label} style={{background:"#fff",borderRadius:8,padding:"12px 14px",border:`2px solid ${s.color}20`,boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
           <div style={{fontSize:24,fontWeight:900,color:s.color}}>{s.n}</div>
@@ -1312,10 +1312,10 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
               {u.type==="system"&&<Badge text="SYSTEM" color="#166534" bg="#dcfce7" small/>}
               {isDeletion&&<Badge text="DELETION" color="#991b1b" bg="#fee2e2" small/>}
               {isRejection&&<Badge text="REJECT" color="#166534" bg="#dcfce7" small/>}
-              {isBriefing&&<Badge text="ğŸ“‹ BRIEFING" color="#7c3aed" bg="#ede9fe" small/>}
+              {isBriefing&&<Badge text="📋 BRIEFING" color="#7c3aed" bg="#ede9fe" small/>}
               <span style={{fontSize:10,color:"#94a3b8",marginLeft:"auto"}}>{fmtDT(u.timestamp)}</span>
             </div>
-            {task&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,paddingLeft:32}}>Task: <span style={{fontWeight:700,color:"#0f2557"}}>{task.ref}</span> â€“ {task.task}</div>}
+            {task&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,paddingLeft:32}}>Task: <span style={{fontWeight:700,color:"#0f2557"}}>{task.ref}</span> – {task.task}</div>}
             <div style={{fontSize:12,color:"#374151",lineHeight:1.5,paddingLeft:32,whiteSpace:"pre-wrap"}}>{u.text}</div>
           </div>;
         })}
@@ -1325,7 +1325,7 @@ function AdminView({members,projects,tasks,updates=[],deleteRequests,currentUser
   </div>;
 }
 
-/* â”€â”€ TASK FORM â”€â”€ */
+/* ── TASK FORM ── */
 function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSave,onCancel}){
   const DRAFT_KEY=`tkj_form_draft_${currentUser.id}`;
   const blank={id:uid(),projectId:"",task:"",taskType:"",preparedDate:today(),dueDate:"",dueTime:"18:00",completedDate:"",status:"Not Started",priority:"Medium",assignorId:currentUser.id,assigneeId:"",cc:[],remarks:"",linkedTo:[],attachments:[],isPersonal:false,personalOwnerId:null,createdAt:nowISO(),createdBy:currentUser.id};
@@ -1365,29 +1365,29 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:22}}>
       <div>
         <h2 style={{margin:0,fontSize:18,color:"#0f2557",fontWeight:800}}>{initial?"Edit Task":"New Task"}</h2>
-        <p style={{margin:"3px 0 0",fontSize:11,color:"#94a3b8"}}>TKJ Task Monitoring Â· {currentUser.name}</p>
+        <p style={{margin:"3px 0 0",fontSize:11,color:"#94a3b8"}}>TKJ Task Monitoring · {currentUser.name}</p>
       </div>
       {hasDraftRecovery&&!initial&&<div style={{position:"absolute",top:0,left:0,right:0,background:"#fef3c7",padding:"8px 16px",borderRadius:"12px 12px 0 0",display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:12}}>
-        <span style={{color:"#92400e",fontWeight:700}}>ğŸ“‹ Unsaved draft recovered â€“ continue where you left off?</span>
+        <span style={{color:"#92400e",fontWeight:700}}>📋 Unsaved draft recovered – continue where you left off?</span>
         <div style={{display:"flex",gap:8}}>
           <button onClick={discardDraft} style={{padding:"3px 10px",borderRadius:4,border:"1px solid #fbbf24",background:"#fff",color:"#92400e",fontSize:11,cursor:"pointer"}}>Discard</button>
           <button onClick={clearDraft} style={{padding:"3px 10px",borderRadius:4,border:"none",background:"#92400e",color:"#fff",fontSize:11,cursor:"pointer"}}>Keep</button>
         </div>
       </div>}
-      <button onClick={onCancel} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8"}}>âœ•</button>
+      <button onClick={onCancel} style={{background:"none",border:"none",fontSize:22,cursor:"pointer",color:"#94a3b8"}}>✕</button>
     </div>
     <div style={{display:"flex",gap:8,marginBottom:18,padding:"10px 14px",background:"#f8fafc",borderRadius:8,border:"1.5px solid #e2e8f0"}}>
-      <button onClick={()=>setIsPersonal(false)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:!isPersonal?"#0f2557":"transparent",color:!isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>ğŸ“ Project Task</button>
-      <button onClick={()=>setIsPersonal(true)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:isPersonal?"#8b5cf6":"transparent",color:isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>ğŸ‘¤ Personal Task</button>
+      <button onClick={()=>setIsPersonal(false)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:!isPersonal?"#0f2557":"transparent",color:!isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>📁 Project Task</button>
+      <button onClick={()=>setIsPersonal(true)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:isPersonal?"#8b5cf6":"transparent",color:isPersonal?"#fff":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer"}}>👤 Personal Task</button>
       {isPersonal&&<span style={{fontSize:11,color:"#8b5cf6",fontWeight:600,alignSelf:"center"}}>Only visible to you</span>}
     </div>
     <div style={{display:"flex",flexDirection:"column",gap:15}}>
-      {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">â€“ Select Project â€“</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
-      <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation â€“ Civil Works"/></div>
+      {!isPersonal&&<Sel label="Project" value={f.projectId} onChange={v=>upd("projectId",v)} options={[<option key="" value="">– Select Project –</option>,...activeProjects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)]}/>}
+      <div><label style={lbl}>Task / Document Description</label><input style={inp} value={f.task} onChange={e=>upd("task",e.target.value)} placeholder="e.g. BOQ Preparation – Civil Works"/></div>
       <Sel label="Task Type" value={f.taskTypeId||""} onChange={v=>upd("taskTypeId",v||null)}
-        options={[<option key="" value="">â€“ Select Type â€“</option>,...(activeTaskTypes||[]).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)]}/>
+        options={[<option key="" value="">– Select Type –</option>,...(activeTaskTypes||[]).map(tt=><option key={tt.id} value={tt.id}>{tt.name}</option>)]}/>
       <Sel label="Company Related To" value={f.companyId||""} onChange={v=>upd("companyId",v||null)}
-        options={[<option key="" value="">â€“ Select Company â€“</option>,...(activeCompanies||[]).map(co=><option key={co.id} value={co.id}>{co.code} â€” {co.name}</option>)]}/>
+        options={[<option key="" value="">– Select Company –</option>,...(activeCompanies||[]).map(co=><option key={co.id} value={co.id}>{co.code} — {co.name}</option>)]}/>
       <div style={r2}>
         <div><label style={lbl}>Prepared Date</label><input type="date" style={inp} value={f.preparedDate} onChange={e=>upd("preparedDate",e.target.value)}/></div>
         <div>
@@ -1409,7 +1409,7 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
         <Sel label="Priority" value={f.priority} onChange={v=>upd("priority",v)} options={Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}/>
         <Sel label="Assignor" value={f.assignorId} onChange={v=>upd("assignorId",v)} options={members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}</option>)}/>
       </div>
-      <Sel label="Assignee" value={f.assigneeId} onChange={v=>upd("assigneeId",v)} options={[<option key="" value="">â€“ Select Assignee â€“</option>,...members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}{m.role==="admin"?" (Admin)":""}</option>)]}/>
+      <Sel label="Assignee" value={f.assigneeId} onChange={v=>upd("assigneeId",v)} options={[<option key="" value="">– Select Assignee –</option>,...members.filter(m=>m.active).map(m=><option key={m.id} value={m.id}>{m.name}{m.role==="admin"?" (Admin)":""}</option>)]}/>
       {!isPersonal&&<MemberPicker label="CC (Copy To)" selected={f.cc} onChange={v=>upd("cc",v)} members={members} excludeIds={[f.assigneeId].filter(Boolean)}/>}
       <div><label style={lbl}>Remarks / Notes</label><textarea style={{...inp,resize:"vertical",minHeight:56}} value={f.remarks} onChange={e=>upd("remarks",e.target.value)}/></div>
       <div><label style={lbl}>Attachments</label><AttachmentPanel attachments={f.attachments} onChange={v=>upd("attachments",v)}/></div>
@@ -1418,7 +1418,7 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
         <div style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:10,display:"flex",flexWrap:"wrap",gap:6,background:"#f8fafc"}}>
           {tasks.filter(t=>t.id!==f.id&&!t.isPersonal).map(t=>{const on=f.linkedTo.includes(t.id);return<button key={t.id} onClick={()=>upd("linkedTo",on?f.linkedTo.filter(x=>x!==t.id):[...f.linkedTo,t.id])}
             style={{padding:"4px 9px",borderRadius:5,border:`1.5px solid ${on?"#0f2557":"#e2e8f0"}`,background:on?"#0f2557":"#fff",color:on?"#fff":"#475569",fontSize:11,cursor:"pointer",fontWeight:on?700:400}}>
-            {t.ref} â€“ {t.task.slice(0,18)}{t.task.length>18?"â€¦":""}
+            {t.ref} – {t.task.slice(0,18)}{t.task.length>18?"…":""}
           </button>;})}
         </div>
       </div>}
@@ -1426,7 +1426,7 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
     <div style={{display:"flex",gap:12,marginTop:22,justifyContent:"flex-end"}}>
       <button onClick={onCancel} style={{padding:"10px 22px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancel</button>
       {!initial&&<button onClick={()=>handleSave(true)} style={{padding:"10px 22px",borderRadius:7,border:"1.5px solid #8b5cf6",background:"#fff",color:"#8b5cf6",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-        ğŸ’¾ Save Draft
+        💾 Save Draft
       </button>}
       <button onClick={()=>handleSave(false)} style={{padding:"10px 26px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 14px rgba(15,37,87,0.3)"}}>
         {initial?"Update Task":"Add Task"}
@@ -1435,14 +1435,14 @@ function TaskForm({initial,tasks,members,projects,taskTypes=[],currentUser,onSav
   </div>;
 }
 
-/* â”€â”€ NOTIFICATION PANEL â”€â”€ */
+/* ── NOTIFICATION PANEL ── */
 function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
   const getMember=(id)=>members.find(m=>m.id===id)||{name:"?"};
   const getTask=(id)=>tasks.find(t=>t.id===id);
   return<div style={{position:"absolute",top:"100%",right:0,width:340,background:"#fff",borderRadius:10,boxShadow:"0 8px 32px rgba(10,20,60,0.18)",border:"1.5px solid #e2e8f0",zIndex:500,overflow:"hidden",marginTop:4}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#0f2557"}}>
-      <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>ğŸ”” Notifications</span>
-      <button onClick={onClose} style={{background:"none",border:"none",color:"#7ba3d4",fontSize:16,cursor:"pointer"}}>âœ•</button>
+      <span style={{fontSize:13,fontWeight:800,color:"#fff"}}>🔔 Notifications</span>
+      <button onClick={onClose} style={{background:"none",border:"none",color:"#7ba3d4",fontSize:16,cursor:"pointer"}}>✕</button>
     </div>
     <div style={{maxHeight:380,overflowY:"auto"}}>
       {notifs.length===0&&<div style={{padding:"28px 0",textAlign:"center",color:"#94a3b8",fontSize:13}}>All caught up! No new notifications.</div>}
@@ -1458,14 +1458,14 @@ function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
             <Avatar name={author.name} size={28}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:12,fontWeight:700,color:"#1e293b"}}>
-                {n.urgent&&"ğŸš¨ "}<span style={{color:"#0f2557"}}>{author.name}</span>
+                {n.urgent&&"🚨 "}<span style={{color:"#0f2557"}}>{author.name}</span>
                 {n.type==="message"?" sent a message":" posted an update"}
               </div>
               {task&&<div style={{fontSize:11,color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{task.task}</div>}
               {proj&&<div style={{fontSize:10,color:"#94a3b8"}}>{proj.name}</div>}
               <div style={{fontSize:10,color:"#94a3b8",marginTop:2}}>{fmtDT(n.timestamp)}</div>
             </div>
-            {n.urgent&&<span style={{fontSize:16}}>ğŸš¨</span>}
+            {n.urgent&&<span style={{fontSize:16}}>🚨</span>}
           </div>
         </div>;
       })}
@@ -1476,7 +1476,7 @@ function NotifPanel({notifs,members,tasks,projects,onClose,onOpenTask}){
   </div>;
 }
 
-/* â”€â”€ RESPONSIVE TASK TABLE â”€â”€ */
+/* ── RESPONSIVE TASK TABLE ── */
 function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,projects,taskTypes,getMember,getProject,STATUS_META,PRIORITY_META,fmtDate,DueChip,Badge,Avatar,clearFilters,activeFiltersCount,onOpenTask}){
   const [isMobile,setIsMobile]=useState(window.innerWidth<768);
   useEffect(()=>{
@@ -1486,7 +1486,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
 
   if(isMobile){
     if(filtered.length===0)return<div style={{padding:"40px 0",textAlign:"center",color:"#94a3b8"}}>
-      <div style={{fontSize:32,marginBottom:8}}>ğŸ“‹</div>
+      <div style={{fontSize:32,marginBottom:8}}>📋</div>
       <div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
       {activeFiltersCount>0&&<button onClick={clearFilters} style={{marginTop:10,padding:"6px 14px",borderRadius:6,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:11,cursor:"pointer"}}>Clear Filters</button>}
     </div>;
@@ -1508,14 +1508,14 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             <span style={{fontSize:11,fontWeight:800,color:"#c9a227"}}>{t.ref}</span>
             <Badge text={t.status} color={sm.color} bg={sm.bg} small/>
             <span style={{fontSize:10,fontWeight:700,color:pm.color,marginLeft:"auto"}}>{pm.label}</span>
-            {urgentMsg>0&&<span style={{fontSize:11}}>ğŸš¨</span>}
+            {urgentMsg>0&&<span style={{fontSize:11}}>🚨</span>}
           </div>
           <div style={{fontSize:13,fontWeight:700,color:"#0f2557",lineHeight:1.4,marginBottom:4,wordBreak:"break-word"}}>{t.task}</div>
           {hasLinks&&<div style={{fontSize:10,color:"#64748b",marginBottom:4,display:"flex",alignItems:"center",gap:3}}>
-            <span>ğŸ”—</span><span style={{fontWeight:600}}>Has linked tasks</span>
+            <span>🔗</span><span style={{fontWeight:600}}>Has linked tasks</span>
           </div>}
           {proj&&<div style={{fontSize:11,color:"#64748b",marginBottom:4,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
-            <span>ğŸ“ {proj.name}</span>
+            <span>📁 {proj.name}</span>
             {t.taskTypeId&&(taskTypes||[]).length>0&&<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"1px 8px",fontWeight:600}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||""}</span>}
             {false&&<span style={{fontSize:10,color:"#1e40af",background:"#dbeafe",borderRadius:4,padding:"1px 7px",fontWeight:600}}>{t.taskType}</span>}
           </div>}
@@ -1523,7 +1523,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             {assignor&&<div style={{display:"flex",alignItems:"center",gap:4}}>
               <Avatar name={assignor.name} size={18} color="#94a3b8"/>
               <span style={{fontSize:10,color:"#94a3b8"}}>{assignor.name}</span>
-              <span style={{fontSize:10,color:"#cbd5e1"}}>â†’</span>
+              <span style={{fontSize:10,color:"#cbd5e1"}}>→</span>
             </div>}
             {assignee&&<div style={{display:"flex",alignItems:"center",gap:4}}>
               <Avatar name={assignee.name} size={20} color="#0f2557"/>
@@ -1537,19 +1537,19 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             </div>
             {t.completedDate&&<div style={{display:"flex",flexDirection:"column"}}>
               <span style={{fontSize:9,color:"#94a3b8",fontWeight:700,textTransform:"uppercase",marginBottom:2}}>Completed</span>
-              <span style={{fontSize:10,color:"#166534",fontWeight:600}}>âœ… {fmtDate(t.completedDate)}</span>
+              <span style={{fontSize:10,color:"#166534",fontWeight:600}}>✅ {fmtDate(t.completedDate)}</span>
             </div>}
           </div>
           {(msgCount>0||fileCount>0)&&<div style={{display:"flex",gap:8}}>
-            {msgCount>0&&<span style={{fontSize:11,color:urgentMsg?"#dc2626":"#3b82f6",fontWeight:700}}>ğŸ’¬ {msgCount}</span>}
-            {fileCount>0&&<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>ğŸ“ {fileCount}</span>}
+            {msgCount>0&&<span style={{fontSize:11,color:urgentMsg?"#dc2626":"#3b82f6",fontWeight:700}}>💬 {msgCount}</span>}
+            {fileCount>0&&<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>📎 {fileCount}</span>}
           </div>}
         </div>;
       })}
     </div>;
   }
 
-  const COL_NAMES=["Ref","Project","Type","Task / Doc","Assignor","Assignee","Due Date","Completed","Status","Priority","ğŸ’¬","ğŸ“"];
+  const COL_NAMES=["Ref","Project","Type","Task / Doc","Assignor","Assignee","Due Date","Completed","Status","Priority","💬","📎"];
   const COL_MIN=[60,70,60,150,70,70,90,90,75,50,30,30];
   const COL_DEF=[90,110,80,220,90,90,110,110,82,55,34,34];
   const [widths,setWidths]=useState(()=>{try{const s=localStorage.getItem("tkj_col_widths_v2");return s?JSON.parse(s):COL_DEF;}catch{return COL_DEF;}});
@@ -1585,7 +1585,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
           </div>)}
         </div>
         {filtered.length===0&&<div style={{padding:"48px 0",textAlign:"center",color:"#94a3b8"}}>
-          <div style={{fontSize:32,marginBottom:8}}>ğŸ“‹</div><div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
+          <div style={{fontSize:32,marginBottom:8}}>📋</div><div style={{fontSize:13,fontWeight:600}}>No tasks found</div>
         </div>}
         {filtered.map((t,i)=>{
           const sm=STATUS_META[t.status]||STATUS_META["Not Started"];const pm=PRIORITY_META[t.priority]||PRIORITY_META["Medium"];
@@ -1600,17 +1600,17 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             {/* Ref */}
             <div style={{overflow:"hidden"}}><div style={{fontSize:10,fontWeight:700,color:"#c9a227",wordBreak:"break-all"}}>{t.ref}</div></div>
             {/* Project */}
-            <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"ğŸ‘¤ Personal":proj?.name||"â€“"}</div></div>
+            <div style={{overflow:"hidden"}}><div style={{fontSize:10,color:"#475569",wordBreak:"break-word",lineHeight:1.3}}>{t.isPersonal?"👤 Personal":proj?.name||"–"}</div></div>
             {/* Type */}
             <div style={{overflow:"hidden"}}>
               {t.taskTypeId&&(taskTypes||[]).length>0
-                ?<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"2px 7px",fontWeight:700,whiteSpace:"nowrap",display:"inline-block"}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||"â€“"}</span>
-                :<span style={{color:"#d1d5db",fontSize:10}}>â€“</span>}
+                ?<span style={{fontSize:10,color:"#1e40af",background:"#eff6ff",borderRadius:4,padding:"2px 7px",fontWeight:700,whiteSpace:"nowrap",display:"inline-block"}}>{(taskTypes||[]).find(tt=>tt.id===t.taskTypeId)?.name||"–"}</span>
+                :<span style={{color:"#d1d5db",fontSize:10}}>–</span>}
             </div>
             {/* Task / Doc */}
             <div style={{overflow:"hidden"}}>
               <div style={{fontSize:11,color:"#1e293b",fontWeight:600,wordBreak:"break-word",lineHeight:1.3}}>{t.task}</div>
-              {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px",marginTop:2,display:"inline-block"}}>ğŸ”— linked</span>}
+              {hasLinks&&<span style={{fontSize:9,color:"#64748b",background:"#f1f5f9",borderRadius:3,padding:"0px 4px",marginTop:2,display:"inline-block"}}>🔗 linked</span>}
             </div>
             {/* Assignor */}
             <div style={{overflow:"hidden"}}>
@@ -1619,11 +1619,11 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
             {/* Assignee */}
             <div style={{overflow:"hidden"}}>{assignee&&<div style={{display:"flex",alignItems:"center",gap:3}}><Avatar name={assignee.name} size={16}/><span style={{fontSize:10,color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{assignee.name}</span></div>}</div>
             <div style={{overflow:"hidden"}}><DueChip date={t.dueDate} time={t.dueTime}/></div>
-            <div style={{overflow:"hidden"}}>{t.completedDate?<span style={{fontSize:10,color:"#166534",fontWeight:600,wordBreak:"break-word"}}>âœ… {fmtDate(t.completedDate)}</span>:<span style={{color:"#d1d5db",fontSize:10}}>â€“</span>}</div>
+            <div style={{overflow:"hidden"}}>{t.completedDate?<span style={{fontSize:10,color:"#166534",fontWeight:600,wordBreak:"break-word"}}>✅ {fmtDate(t.completedDate)}</span>:<span style={{color:"#d1d5db",fontSize:10}}>–</span>}</div>
             <div style={{overflow:"hidden"}}><Badge text={t.status} color={sm.color} bg={sm.bg} small/></div>
             <div><span style={{fontSize:10,fontWeight:700,color:pm.color}}>{pm.label}</span></div>
-            <div style={{textAlign:"center"}}>{msgCount>0?<span style={{fontSize:11,fontWeight:700,color:urgentMsg?"#dc2626":"#3b82f6"}}>{urgentMsg?"ğŸš¨":""}{msgCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>â€“</span>}</div>
-            <div style={{textAlign:"center"}}>{fileCount>0?<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>ğŸ“{fileCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>â€“</span>}</div>
+            <div style={{textAlign:"center"}}>{msgCount>0?<span style={{fontSize:11,fontWeight:700,color:urgentMsg?"#dc2626":"#3b82f6"}}>{urgentMsg?"🚨":""}{msgCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>–</span>}</div>
+            <div style={{textAlign:"center"}}>{fileCount>0?<span style={{fontSize:11,color:"#0ea5e9",fontWeight:700}}>📎{fileCount}</span>:<span style={{color:"#e2e8f0",fontSize:10}}>–</span>}</div>
           </div>;
         })}
       </div>
@@ -1631,7 +1631,7 @@ function ResponsiveTaskTable({filtered,enriched,messages,notifications,members,p
   </div>;
 }
 
-/* â”€â”€ CONFIG SCREEN â”€â”€ */
+/* ── CONFIG SCREEN ── */
 function ConfigScreen({onConnected}){
   const [url,setUrl]=useState(LS.get("sb_url")||"");
   const [key,setKey]=useState(LS.get("sb_key")||"");
@@ -1655,13 +1655,13 @@ function ConfigScreen({onConnected}){
     <div style={{background:"#fff",borderRadius:16,padding:36,width:"min(480px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
       <div style={{textAlign:"center",marginBottom:28}}>
         <img src={TKJ_LOGO} alt="TKJ" style={{height:70,objectFit:"contain",marginBottom:14}}/>
-        <h2 style={{margin:0,fontSize:20,color:"#0f2557",fontWeight:800}}>â˜ï¸ Cloud Database Setup</h2>
+        <h2 style={{margin:0,fontSize:20,color:"#0f2557",fontWeight:800}}>☁️ Cloud Database Setup</h2>
         <p style={{margin:"6px 0 0",fontSize:13,color:"#64748b"}}>Connect Supabase for real-time team sync</p>
       </div>
       <div style={{background:"#f0f9ff",borderRadius:8,padding:"12px 14px",marginBottom:20,border:"1px solid #bae6fd"}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#0369a1",marginBottom:4}}>ğŸ“‹ Where to find these:</div>
+        <div style={{fontSize:12,fontWeight:700,color:"#0369a1",marginBottom:4}}>📋 Where to find these:</div>
         <div style={{fontSize:11,color:"#0369a1",lineHeight:1.8}}>
-          1. Go to <strong>supabase.com</strong> â†’ your project<br/>
+          1. Go to <strong>supabase.com</strong> → your project<br/>
           2. Click <strong>Project Settings</strong> (gear icon)<br/>
           3. Click <strong>API</strong> tab<br/>
           4. Copy <strong>Project URL</strong> and <strong>anon public</strong> key
@@ -1676,9 +1676,9 @@ function ConfigScreen({onConnected}){
           <label style={{fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",display:"block",marginBottom:5}}>Anon / Public Key</label>
           <input style={{...inp,fontFamily:"monospace",fontSize:11}} value={key} onChange={e=>setKey(e.target.value)} placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."/>
         </div>
-        {err&&<div style={{padding:"10px 14px",background:"#fee2e2",borderRadius:7,color:"#991b1b",fontSize:12,fontWeight:600}}>âš ï¸ {err}</div>}
+        {err&&<div style={{padding:"10px 14px",background:"#fee2e2",borderRadius:7,color:"#991b1b",fontSize:12,fontWeight:600}}>⚠️ {err}</div>}
         <button onClick={connect} disabled={loading} style={{padding:"12px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:14,fontWeight:700,cursor:loading?"default":"pointer",opacity:loading?0.7:1}}>
-          {loading?"â³ Connectingâ€¦":"ğŸ”Œ Connect to Database"}
+          {loading?"⏳ Connecting…":"🔌 Connect to Database"}
         </button>
       </div>
       <p style={{textAlign:"center",fontSize:10,color:"#cbd5e1",marginTop:20}}>TKJ Project Management Sdn Bhd (1676211-U)</p>
@@ -1686,7 +1686,7 @@ function ConfigScreen({onConnected}){
   </div>;
 }
 
-/* â”€â”€ PASSWORD MODAL â”€â”€ */
+/* ── PASSWORD MODAL ── */
 function PasswordModal({member,onSuccess,onBack}){
   const [pw,setPw]=useState("");
   const [err,setErr]=useState("");
@@ -1715,22 +1715,22 @@ function PasswordModal({member,onSuccess,onBack}){
           onKeyDown={e=>e.key==="Enter"&&submit()} placeholder="Password" autoFocus
           style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"11px 44px 11px 14px",fontSize:14,fontFamily:"inherit",outline:"none",background:"#f8fafc",boxSizing:"border-box"}}/>
         <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:16}}>
-          {show?"ğŸ™ˆ":"ğŸ‘ï¸"}
+          {show?"🙈":"👁️"}
         </button>
       </div>
-      {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12,fontWeight:600,marginBottom:12}}>âš ï¸ {err}</div>}
+      {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12,fontWeight:600,marginBottom:12}}>⚠️ {err}</div>}
       <button onClick={submit} disabled={loading} style={{width:"100%",padding:"11px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",marginBottom:10}}>
-        {loading?"â³ Verifyingâ€¦":"ğŸ”“ Login"}
+        {loading?"⏳ Verifying…":"🔓 Login"}
       </button>
       <button onClick={onBack} style={{width:"100%",padding:"8px",borderRadius:7,border:"1px solid #e2e8f0",background:"#fff",color:"#64748b",fontSize:12,cursor:"pointer"}}>
-        â† Back to member list
+        ← Back to member list
       </button>
       <p style={{textAlign:"center",fontSize:10,color:"#94a3b8",marginTop:14}}>Forgotten password? Contact your Admin to reset.</p>
     </div>
   </div>;
 }
 
-/* â”€â”€ SET PASSWORD MODAL â”€â”€ */
+/* ── SET PASSWORD MODAL ── */
 function SetPasswordModal({member,onSave,onClose}){
   const [pw,setPw]=useState("");
   const [pw2,setPw2]=useState("");
@@ -1748,23 +1748,23 @@ function SetPasswordModal({member,onSave,onClose}){
   const inp={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"9px 12px",fontSize:13,fontFamily:"inherit",outline:"none",background:"#f8fafc",boxSizing:"border-box"};
   return<div style={{position:"fixed",inset:0,background:"rgba(10,20,50,0.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
     <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,padding:28,width:"min(380px,95vw)",boxShadow:"0 24px 80px rgba(0,0,0,0.3)"}}>
-      <h3 style={{margin:"0 0 6px",fontSize:16,color:"#0f2557",fontWeight:800}}>ğŸ”‘ Set Password â€“ {member.name}</h3>
+      <h3 style={{margin:"0 0 6px",fontSize:16,color:"#0f2557",fontWeight:800}}>🔑 Set Password – {member.name}</h3>
       <p style={{fontSize:12,color:"#64748b",marginBottom:18}}>Only Admins can set or reset passwords.</p>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         <div style={{position:"relative"}}>
           <label style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",display:"block",marginBottom:4}}>New Password (min 6 chars)</label>
           <input type={show?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} style={{...inp,paddingRight:40}}/>
-          <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,bottom:8,background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:14}}>{show?"ğŸ™ˆ":"ğŸ‘ï¸"}</button>
+          <button onClick={()=>setShow(v=>!v)} style={{position:"absolute",right:10,bottom:8,background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:14}}>{show?"🙈":"👁️"}</button>
         </div>
         <div>
           <label style={{fontSize:11,fontWeight:700,color:"#94a3b8",textTransform:"uppercase",display:"block",marginBottom:4}}>Confirm Password</label>
           <input type={show?"text":"password"} value={pw2} onChange={e=>setPw2(e.target.value)} style={inp}/>
         </div>
-        {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12}}>âš ï¸ {err}</div>}
+        {err&&<div style={{padding:"8px 12px",background:"#fee2e2",borderRadius:6,color:"#991b1b",fontSize:12}}>⚠️ {err}</div>}
         <div style={{display:"flex",gap:10}}>
           <button onClick={onClose} style={{flex:1,padding:"9px",borderRadius:7,border:"1.5px solid #e2e8f0",background:"#fff",color:"#475569",fontSize:13,cursor:"pointer"}}>Cancel</button>
           <button onClick={save} disabled={loading} style={{flex:2,padding:"9px",borderRadius:7,border:"none",background:"linear-gradient(135deg,#0f2557,#1e40af)",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {loading?"Savingâ€¦":"âœ… Save Password"}
+            {loading?"Saving…":"✅ Save Password"}
           </button>
         </div>
       </div>
@@ -1772,7 +1772,7 @@ function SetPasswordModal({member,onSave,onClose}){
   </div>;
 }
 
-/* â”€â”€ TASK BRIEFING MODAL â”€â”€ */
+/* ── TASK BRIEFING MODAL ── */
 function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpenTask}){
   const [timeLeft,setTimeLeft]=useState(120); // 2 minutes
   const [dismissed,setDismissed]=useState(false);
@@ -1838,26 +1838,26 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
         position:"sticky",top:0,zIndex:1,
       }}>
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-          <div style={{fontSize:28}}>ğŸ“‹</div>
+          <div style={{fontSize:28}}>📋</div>
           <div>
             <div style={{fontSize:16,fontWeight:900,color:"#c9a227",letterSpacing:"0.05em"}}>
               TASK BRIEFING
             </div>
             <div style={{fontSize:12,color:"#7ba3d4",marginTop:2}}>
-              Hey {currentUser.name}! Quick heads-up before you dive in ğŸ‘€
+              Hey {currentUser.name}! Quick heads-up before you dive in 👀
             </div>
           </div>
         </div>
         {/* Summary badges */}
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <span style={{padding:"3px 10px",background:"rgba(255,255,255,0.1)",borderRadius:20,fontSize:11,color:"#fff",fontWeight:600}}>
-            ğŸ“‹ {myTasks.length} Pending
+            📋 {myTasks.length} Pending
           </span>
           {overdueCount>0&&<span style={{padding:"3px 10px",background:"#dc2626",borderRadius:20,fontSize:11,color:"#fff",fontWeight:700}}>
-            ğŸš¨ {overdueCount} Overdue
+            🚨 {overdueCount} Overdue
           </span>}
           {dueTodayCount>0&&<span style={{padding:"3px 10px",background:"#f97316",borderRadius:20,fontSize:11,color:"#fff",fontWeight:700}}>
-            âš¡ {dueTodayCount} Due Today
+            ⚡ {dueTodayCount} Due Today
           </span>}
         </div>
       </div>
@@ -1891,28 +1891,28 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
                     <span style={{fontSize:10,fontWeight:800,color:"#c9a227"}}>{t.ref}</span>
-                    {isOverdue&&<span style={{fontSize:9,background:"#fee2e2",color:"#dc2626",borderRadius:4,padding:"1px 6px",fontWeight:700}}>ğŸš¨ OVERDUE</span>}
-                    {isDueToday&&!isOverdue&&<span style={{fontSize:9,background:"#ffedd5",color:"#f97316",borderRadius:4,padding:"1px 6px",fontWeight:700}}>âš¡ DUE TODAY</span>}
-                    {isDueSoon&&!isOverdue&&!isDueToday&&<span style={{fontSize:9,background:"#fef3c7",color:"#92400e",borderRadius:4,padding:"1px 6px",fontWeight:700}}>â° {d}d left</span>}
+                    {isOverdue&&<span style={{fontSize:9,background:"#fee2e2",color:"#dc2626",borderRadius:4,padding:"1px 6px",fontWeight:700}}>🚨 OVERDUE</span>}
+                    {isDueToday&&!isOverdue&&<span style={{fontSize:9,background:"#ffedd5",color:"#f97316",borderRadius:4,padding:"1px 6px",fontWeight:700}}>⚡ DUE TODAY</span>}
+                    {isDueSoon&&!isOverdue&&!isDueToday&&<span style={{fontSize:9,background:"#fef3c7",color:"#92400e",borderRadius:4,padding:"1px 6px",fontWeight:700}}>⏰ {d}d left</span>}
                   </div>
                   <div style={{fontSize:13,fontWeight:700,color:"#0f2557",marginBottom:3,wordBreak:"break-word"}}>{t.task}</div>
                   <div style={{display:"flex",gap:10,fontSize:10,color:"#64748b",flexWrap:"wrap"}}>
-                    {proj&&<span>ğŸ“ {proj.name}</span>}
-                    {assignor&&<span>ğŸ‘¤ From: {assignor.name}</span>}
-                    {t.dueDate&&<span>ğŸ“… Due: {fmtDate(t.dueDate)}</span>}
+                    {proj&&<span>📁 {proj.name}</span>}
+                    {assignor&&<span>👤 From: {assignor.name}</span>}
+                    {t.dueDate&&<span>📅 Due: {fmtDate(t.dueDate)}</span>}
                   </div>
                 </div>
-                <span style={{fontSize:11,color:"#94a3b8",flexShrink:0,marginTop:2}}>â†’</span>
+                <span style={{fontSize:11,color:"#94a3b8",flexShrink:0,marginTop:2}}>→</span>
               </div>
             </div>;
           })}
         </div>
         <div style={{marginTop:12,padding:"10px 14px",background:"#f0f9ff",borderRadius:8,border:"1px solid #bae6fd",fontSize:11,color:"#0369a1"}}>
-          ğŸ’¡ Tap any task to jump straight in. You've got this, let's smash it today! ğŸ”¥
+          💡 Tap any task to jump straight in. You've got this, let's smash it today! 🔥
         </div>
       </div>
 
-      {/* Footer â€” NOTED button */}
+      {/* Footer — NOTED button */}
       <div style={{
         padding:"16px 20px",
         borderTop:"1px solid #f1f5f9",
@@ -1929,17 +1929,17 @@ function TaskBriefing({tasks,enriched,currentUser,members,projects,onNoted,onOpe
           letterSpacing:"0.08em",
           boxShadow:"0 4px 20px rgba(22,101,52,0.35)",
         }}>
-          ğŸš€ Let's Go !!
+          🚀 Let's Go !!
         </button>
         <div style={{textAlign:"center",marginTop:8,fontSize:10,color:"#94a3b8"}}>
-          You got this! ğŸ’ª Window closes automatically.
+          You got this! 💪 Window closes automatically.
         </div>
       </div>
     </div>
   </div>;
 }
 
-/* â”€â”€ MAIN APP â”€â”€ */
+/* ── MAIN APP ── */
 function App(){
   const [dbReady,setDbReady]=useState(false);
   const [currentUserId,setCurrentUserId]=useState(()=>LS.get("tkj_session_user"));
@@ -2044,9 +2044,9 @@ function App(){
     if(tasks.find(x=>x.id===t.id)){await db.from("tasks").update(row).eq("id",t.id);}
     else{
       await db.from("tasks").insert(row);
-      const assigneeName=members.find(m=>m.id===t.assigneeId)?.name||"â€“";
+      const assigneeName=members.find(m=>m.id===t.assigneeId)?.name||"–";
       await db.from("task_updates").insert(toUpdate({id:uid(),taskId:t.id,authorId:currentUserId||"",
-        text:`Task created by ${currentUser?.name||"â€“"}. Assigned to ${assigneeName}. Priority: ${t.priority}. Due: ${fmtDate(t.dueDate)}.`,
+        text:`Task created by ${currentUser?.name||"–"}. Assigned to ${assigneeName}. Priority: ${t.priority}. Due: ${fmtDate(t.dueDate)}.`,
         attachments:[],timestamp:nowISO(),type:"system"}));
     }
     setModal(null);setSelected(null);
@@ -2097,9 +2097,9 @@ function App(){
     await db.from("delete_requests").update({status:approved?"approved":"rejected",reviewed_by:currentUserId,reviewed_at:nowISO(),review_note:reviewNote}).eq("id",reqId);
     if(approved){
       await db.from("tasks").update({deleted:true,deleted_at:nowISO(),deleted_by:req.requestedBy,deleted_approved_by:currentUserId}).eq("id",req.taskId);
-      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`âœ… DELETE APPROVED by Admin (${currentUser?.name}). Requested by ${requester?.name||"â€“"}. Reason: "${req.reason}". Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
+      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`✅ DELETE APPROVED by Admin (${currentUser?.name}). Requested by ${requester?.name||"–"}. Reason: "${req.reason}". Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
     }else{
-      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`âŒ DELETE REJECTED by Admin (${currentUser?.name}). Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
+      await addUpdate({id:uid(),taskId:req.taskId,authorId:currentUserId,text:`❌ DELETE REJECTED by Admin (${currentUser?.name}). Note: "${reviewNote||"None"}".`,attachments:[],timestamp:nowISO(),type:"system"});
     }
     if(approved){setModal(null);setSelected(null);}
   };
@@ -2118,7 +2118,7 @@ function App(){
   const deleteCompany=async(id)=>{
     const linked=tasks.filter(t=>t.companyId===id&&t.status!=="Completed"&&!t.deleted);
     if(linked.length>0){
-      alert(`Cannot delete â€” ${linked.length} incomplete task(s) linked. Reassign them first.`);
+      alert(`Cannot delete — ${linked.length} incomplete task(s) linked. Reassign them first.`);
       return false;
     }
     await db.from("companies").delete().eq("id",id);
@@ -2135,7 +2135,7 @@ function App(){
     // Check if any incomplete tasks use this type
     const linked=tasks.filter(t=>t.taskTypeId===id&&t.status!=="Completed"&&t.status!=="On Hold"&&!t.deleted);
     if(linked.length>0){
-      alert(`Cannot delete â€” ${linked.length} incomplete task(s) are using this type. Please reassign them first.`);
+      alert(`Cannot delete — ${linked.length} incomplete task(s) are using this type. Please reassign them first.`);
       return false;
     }
     await db.from("task_types").delete().eq("id",id);
@@ -2160,7 +2160,7 @@ function App(){
   const toggleMute=()=>{const m=!muted;setMuted(m);LS.set("tkj_muted",m);};
   const handleBriefingNoted=async(how)=>{
     setShowBriefing(false);
-    // Audit trail â€” log acknowledgement
+    // Audit trail — log acknowledgement
     const myPending=enriched.filter(t=>
       !t.deleted&&!t.isPersonal&&
       t.assigneeId===currentUserId&&
@@ -2172,7 +2172,7 @@ function App(){
       for(const t of myPending.slice(0,10)){// cap at 10 to avoid spam
         await addUpdate({
           id:uid(),taskId:t.id,authorId:currentUserId,
-          text:`ğŸ“‹ Task briefing acknowledged by ${currentUser?.name} on ${fmtDT(now)}. Task status: ${t.status}.`,
+          text:`📋 Task briefing acknowledged by ${currentUser?.name} on ${fmtDT(now)}. Task status: ${t.status}.`,
           attachments:[],timestamp:now,type:"briefing_audit",
           supersedesId:null,supersededById:null,
           suggestionStatus:null,approvedBy:null,approvedAt:null,
@@ -2188,7 +2188,7 @@ function App(){
   const visibleTasks=useMemo(()=>{
     if(activeTab==="personal")return enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted);
     if(activeTab==="completed")return enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status==="Completed");
-    // active â€” exclude completed and personal
+    // active — exclude completed and personal
     return enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status!=="Completed"&&(t.status!=="Draft"||(t.createdBy===currentUserId||t.assignorId===currentUserId)));
   },[enriched,activeTab,currentUserId]);
 
@@ -2229,7 +2229,7 @@ function App(){
     return[...nm,...nu].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
   },[messages,updates,tasks,currentUserId,notifSeen]);
 
-  // â”€â”€ FLOATING TOAST TRIGGER â”€â”€
+  // ── FLOATING TOAST TRIGGER ──
   // Uses raw messages+updates (NOT filtered by notifSeen) so toasts fire
   // even after bell has been opened. Tracks by id to avoid duplicates.
   // On first load: pre-populate prevNotifIds so we don't toast old history.
@@ -2246,7 +2246,7 @@ function App(){
     ];
 
     if(isFirstLoad.current){
-      // Pre-populate on first load â€” don't toast existing items
+      // Pre-populate on first load — don't toast existing items
       allRelevant.forEach(n=>prevNotifIds.current.add(n.id));
       isFirstLoad.current=false;
       return;
@@ -2272,7 +2272,7 @@ function App(){
       }]);
       setTimeout(()=>setToasts(prev=>prev.filter(t=>t.id!==toastId)),n.urgent?15000:8000);
 
-      // Sound â€” use a short delay so browser allows it after realtime event
+      // Sound — use a short delay so browser allows it after realtime event
       if(!muted){
         setTimeout(()=>{
           try{
@@ -2319,7 +2319,7 @@ function App(){
 
   if(!loaded)return<div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0a1a42,#0f2557)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
     <img src={TKJ_LOGO} alt="TKJ" style={{height:60,objectFit:"contain"}}/>
-    <div style={{color:"#7ba3d4",fontSize:14}}>Loading TKJ Task Monitoringâ€¦</div>
+    <div style={{color:"#7ba3d4",fontSize:14}}>Loading TKJ Task Monitoring…</div>
     <div style={{width:180,height:4,background:"rgba(255,255,255,0.1)",borderRadius:2,overflow:"hidden"}}>
       <div style={{width:"60%",height:"100%",background:"#c9a227",borderRadius:2,animation:"pulse 1.5s infinite"}}/>
     </div>
@@ -2331,7 +2331,7 @@ function App(){
       <div style={{background:"#fff",borderRadius:16,padding:36,width:"min(480px,95vw)",boxShadow:"0 32px 100px rgba(0,0,0,0.4)"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <img src={TKJ_LOGO} alt="TKJ" style={{height:60,objectFit:"contain",marginBottom:10}}/>
-          <h2 style={{fontSize:18,color:"#0f2557",fontWeight:800,margin:"0 0 4px"}}>Good day, {user?.name}! ğŸ‘‹</h2>
+          <h2 style={{fontSize:18,color:"#0f2557",fontWeight:800,margin:"0 0 4px"}}>Good day, {user?.name}! 👋</h2>
           <p style={{fontSize:13,color:"#64748b",margin:0}}>How are you feeling today?</p>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
@@ -2368,16 +2368,16 @@ function App(){
               onMouseEnter={e=>{e.currentTarget.style.background="#eff6ff";e.currentTarget.style.borderColor="#0f2557";}}
               onMouseLeave={e=>{e.currentTarget.style.background="#f8fafc";e.currentTarget.style.borderColor="#e2e8f0";}}>
               <Avatar name={m.name} size={38} color={m.role==="admin"?"#c9a227":"#0f2557"}/>
-              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{m.name}</div><div style={{fontSize:11,color:"#94a3b8"}}>{m.role==="admin"?"Admin":"Member"} Â· {m.email}</div></div>
+              <div style={{flex:1}}><div style={{fontSize:14,fontWeight:700,color:"#0f2557"}}>{m.name}</div><div style={{fontSize:11,color:"#94a3b8"}}>{m.role==="admin"?"Admin":"Member"} · {m.email}</div></div>
               {moodObj&&<span style={{fontSize:22}}>{moodObj.emoji}</span>}
-              <span style={{color:"#94a3b8",fontSize:16}}>ğŸ”’</span>
+              <span style={{color:"#94a3b8",fontSize:16}}>🔒</span>
             </button>;
           })}
         </div>
         <div style={{textAlign:"center",marginTop:16}}>
-          <div style={{fontSize:10,color:"#94a3b8"}}>â˜ï¸ Real-time cloud sync active</div>
+          <div style={{fontSize:10,color:"#94a3b8"}}>☁️ Real-time cloud sync active</div>
         </div>
-        <button onClick={()=>{LS.set("sb_url",null);LS.set("sb_key",null);window.location.reload();}} style={{width:"100%",marginTop:10,padding:"6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:10,cursor:"pointer"}}>âš™ï¸ Change Database Settings</button>
+        <button onClick={()=>{LS.set("sb_url",null);LS.set("sb_key",null);window.location.reload();}} style={{width:"100%",marginTop:10,padding:"6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#94a3b8",fontSize:10,cursor:"pointer"}}>⚙️ Change Database Settings</button>
       </div>
     </div>;
   }
@@ -2401,28 +2401,28 @@ function App(){
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",gap:narrow?3:5,padding:"4px 14px 8px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-        {[{id:"list",icon:"ğŸ“‹",label:"Tasks"},{id:"kpi",icon:"ğŸ“Š",label:"KPI"},...(isAdmin?[{id:"admin",icon:"âš™ï¸",label:"Admin"}]:[])].map(n=>(
+        {[{id:"list",icon:"📋",label:"Tasks"},{id:"kpi",icon:"📊",label:"KPI"},...(isAdmin?[{id:"admin",icon:"⚙️",label:"Admin"}]:[])].map(n=>(
           <button key={n.id} onClick={()=>setView(n.id)} style={{display:"flex",alignItems:"center",gap:narrow?0:5,padding:narrow?"6px 10px":"6px 14px",borderRadius:6,border:"none",background:view===n.id?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)",color:view===n.id?"#fff":"#7ba3d4",fontSize:narrow?18:12,fontWeight:600,cursor:"pointer",position:"relative"}}>
-            <span>{n.icon}</span>{!narrow&&<span>{n.label}{n.id==="admin"&&pendingDeleteNotifs>0?" ğŸ”´":""}</span>}
-            {narrow&&n.id==="admin"&&pendingDeleteNotifs>0&&<span style={{position:"absolute",top:2,right:2,fontSize:8}}>ğŸ”´</span>}
+            <span>{n.icon}</span>{!narrow&&<span>{n.label}{n.id==="admin"&&pendingDeleteNotifs>0?" 🔴":""}</span>}
+            {narrow&&n.id==="admin"&&pendingDeleteNotifs>0&&<span style={{position:"absolute",top:2,right:2,fontSize:8}}>🔴</span>}
           </button>
         ))}
         <div ref={bellRef} style={{position:"relative"}}>
           <button onClick={()=>{setShowNotifs(v=>!v);if(!showNotifs)markNotifsRead();}} style={{position:"relative",padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:notifications.length?"#fbbf24":"#7ba3d4",fontSize:18}}>
-            ğŸ””{(notifications.length+pendingDeleteNotifs)>0&&<span style={{position:"absolute",top:1,right:1,background:urgentNotifs?"#dc2626":pendingDeleteNotifs?"#f97316":"#f59e0b",color:"#fff",borderRadius:"50%",width:15,height:15,fontSize:8,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{(notifications.length+pendingDeleteNotifs)>9?"9+":(notifications.length+pendingDeleteNotifs)}</span>}
+            🔔{(notifications.length+pendingDeleteNotifs)>0&&<span style={{position:"absolute",top:1,right:1,background:urgentNotifs?"#dc2626":pendingDeleteNotifs?"#f97316":"#f59e0b",color:"#fff",borderRadius:"50%",width:15,height:15,fontSize:8,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>{(notifications.length+pendingDeleteNotifs)>9?"9+":(notifications.length+pendingDeleteNotifs)}</span>}
           </button>
           {showNotifs&&<NotifPanel notifs={notifications} members={members} tasks={enriched} projects={projects} onClose={()=>setShowNotifs(false)} onOpenTask={(id,tab)=>{openTask(id,tab);setView("list");}}/>}
         </div>
-        <button onClick={toggleMute} title={muted?"Notifications muted â€” click to unmute":"Notifications sound on â€” click to mute"} style={{padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:muted?"#ef4444":"#7ba3d4",fontSize:16}}>
-          {muted?"ğŸ”•":"ğŸ””"}
+        <button onClick={toggleMute} title={muted?"Notifications muted — click to unmute":"Notifications sound on — click to mute"} style={{padding:"5px 8px",border:"none",background:"transparent",cursor:"pointer",color:muted?"#ef4444":"#7ba3d4",fontSize:16}}>
+          {muted?"🔕":"🔔"}
         </button>
         <div style={{display:"flex",alignItems:"center",gap:narrow?0:6,padding:narrow?"4px 6px":"4px 10px",background:"rgba(255,255,255,0.08)",borderRadius:7,cursor:"pointer"}} onClick={logout}>
           <Avatar name={currentUser.name} size={narrow?22:24} color="#c9a227"/>
-          {!narrow&&<div><div style={{color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>{currentUser.name}{myMoodObj&&<span style={{fontSize:11}}>{myMoodObj.emoji}</span>}</div><div style={{color:"#7ba3d4",fontSize:8}}>{isAdmin?"Admin":"Member"} Â· Logout</div></div>}
+          {!narrow&&<div><div style={{color:"#fff",fontSize:10,fontWeight:700,display:"flex",alignItems:"center",gap:3}}>{currentUser.name}{myMoodObj&&<span style={{fontSize:11}}>{myMoodObj.emoji}</span>}</div><div style={{color:"#7ba3d4",fontSize:8}}>{isAdmin?"Admin":"Member"} · Logout</div></div>}
           {narrow&&myMoodObj&&<span style={{fontSize:10,marginLeft:2}}>{myMoodObj.emoji}</span>}
         </div>
         <button onClick={()=>{setSelected(null);setModal("form");}} style={{padding:narrow?"6px 10px":"7px 14px",borderRadius:7,border:"1.5px solid #c9a227",background:"rgba(201,162,39,0.1)",color:"#c9a227",fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap"}}>
-          {narrow?"ï¼‹":"+ New Task"}
+          {narrow?"＋":"+ New Task"}
         </button>
       </div>
     </div>
@@ -2444,20 +2444,20 @@ function App(){
     {view==="list"&&<div style={{padding:"14px 18px"}}>
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
         <button onClick={()=>{setActiveTab("active");setShowPersonal(false);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="active"?"#0f2557":"#e2e8f0"}`,background:activeTab==="active"?"#0f2557":"#fff",color:activeTab==="active"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          ğŸ“‹ Active Tasks <span style={{fontSize:10,background:activeTab==="active"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status!=="Completed").length}</span>
+          📋 Active Tasks <span style={{fontSize:10,background:activeTab==="active"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status!=="Completed").length}</span>
         </button>
         <button onClick={()=>{setActiveTab("completed");setShowPersonal(false);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="completed"?"#166534":"#e2e8f0"}`,background:activeTab==="completed"?"#166534":"#fff",color:activeTab==="completed"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          âœ… Completed <span style={{fontSize:10,background:activeTab==="completed"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status==="Completed").length}</span>
+          ✅ Completed <span style={{fontSize:10,background:activeTab==="completed"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>!t.isPersonal&&!t.deleted&&t.status==="Completed").length}</span>
         </button>
         <button onClick={()=>{setActiveTab("personal");setShowPersonal(true);}} style={{padding:"6px 14px",borderRadius:6,border:`1.5px solid ${activeTab==="personal"?"#8b5cf6":"#e2e8f0"}`,background:activeTab==="personal"?"#8b5cf6":"#fff",color:activeTab==="personal"?"#fff":"#64748b",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-          ğŸ‘¤ My Personal <span style={{fontSize:10,background:activeTab==="personal"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted).length}</span>
+          👤 My Personal <span style={{fontSize:10,background:activeTab==="personal"?"rgba(255,255,255,0.2)":"#f1f5f9",borderRadius:10,padding:"1px 6px",marginLeft:4}}>{enriched.filter(t=>t.isPersonal&&t.personalOwnerId===currentUserId&&!t.deleted).length}</span>
         </button>
       </div>
       <div style={{background:"#fff",borderRadius:10,padding:"12px 14px",marginBottom:14,boxShadow:"0 2px 12px rgba(0,0,0,0.05)"}}>
         <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
           <div style={{position:"relative",flex:"1 1 200px"}}>
-            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:13}}>ğŸ”</span>
-            <input value={filters.search} onChange={e=>updF("search",e.target.value)} placeholder="Search tasks, refâ€¦" style={{...selStyle,paddingLeft:28,width:"100%",boxSizing:"border-box"}}/>
+            <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:13}}>🔍</span>
+            <input value={filters.search} onChange={e=>updF("search",e.target.value)} placeholder="Search tasks, ref…" style={{...selStyle,paddingLeft:28,width:"100%",boxSizing:"border-box"}}/>
           </div>
           {!showPersonal&&<select value={filters.project} onChange={e=>updF("project",e.target.value)} style={selStyle}><option value="">All Projects</option>{projects.filter(p=>p.active).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select>}
           <select value={filters.taskType||""} onChange={e=>updF("taskType",e.target.value)} style={selStyle}>
@@ -2466,7 +2466,7 @@ function App(){
           </select>
           <select value={filters.company||""} onChange={e=>updF("company",e.target.value)} style={selStyle}>
             <option value="">All Companies</option>
-            {companies.filter(c=>c.active).map(c=><option key={c.id} value={c.id}>{c.code} â€” {c.name}</option>)}
+            {companies.filter(c=>c.active).map(c=><option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
           </select>
           <select value={filters.status} onChange={e=>updF("status",e.target.value)} style={selStyle}><option value="">All Status</option>{Object.keys(STATUS_META).map(s=><option key={s}>{s}</option>)}</select>
           <select value={filters.priority} onChange={e=>updF("priority",e.target.value)} style={selStyle}><option value="">All Priority</option>{Object.keys(PRIORITY_META).map(p=><option key={p}>{p}</option>)}</select>
@@ -2475,13 +2475,13 @@ function App(){
             <option value="">All Types</option>
             {taskTypes.filter(t=>t.active).map(t=><option key={t.id} value={t.name}>{t.name}</option>)}
           </select>
-          {activeFiltersCount>0&&<button onClick={clearFilters} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>âœ• Clear</button>}
+          {activeFiltersCount>0&&<button onClick={clearFilters} style={{padding:"7px 12px",borderRadius:6,border:"1.5px solid #fecaca",background:"#fff",color:"#dc2626",fontSize:11,fontWeight:700,cursor:"pointer"}}>✕ Clear</button>}
         </div>
         <div style={{display:"flex",gap:10,marginTop:10,flexWrap:"wrap",alignItems:"center"}}>
           {[["Due","dueDateFrom","dueDateTo"],["Prepared","preparedFrom","preparedTo"],["Completed","completedFrom","completedTo"]].map(([l,f1,f2])=><div key={l} style={{display:"flex",alignItems:"center",gap:5}}>
             <span style={{fontSize:10,color:"#64748b",fontWeight:700,whiteSpace:"nowrap"}}>{l}:</span>
             <input type="date" value={filters[f1]} onChange={e=>updF(f1,e.target.value)} style={dateStyle}/>
-            <span style={{fontSize:10,color:"#94a3b8"}}>â€“</span>
+            <span style={{fontSize:10,color:"#94a3b8"}}>–</span>
             <input type="date" value={filters[f2]} onChange={e=>updF(f2,e.target.value)} style={dateStyle}/>
           </div>)}
           {[["showDueToday","Due Today"],["showDueWeek","Due This Week"]].map(([k,l])=><button key={k} onClick={()=>updF(k,!filters[k])} style={{padding:"4px 10px",borderRadius:5,border:`1.5px solid ${filters[k]?"#0f2557":"#e2e8f0"}`,background:filters[k]?"#0f2557":"#fff",color:filters[k]?"#fff":"#64748b",fontSize:11,fontWeight:600,cursor:"pointer"}}>{l}</button>)}
@@ -2494,8 +2494,8 @@ function App(){
           {[{k:"dueDate",l:"Due Date"},{k:"createdAt",l:"Created"},{k:"priority",l:"Priority"},{k:"project",l:"Project"},{k:"status",l:"Status"},{k:"ref",l:"Ref"}].map(s=>{
             const isActive=sortKey===s.k;
             return<div key={s.k} style={{display:"flex",borderRadius:5,overflow:"hidden",border:`1px solid ${isActive?"#0f2557":"#e2e8f0"}`}}>
-              <button onClick={()=>setSort(s.k,"asc")} style={{padding:"3px 7px",border:"none",borderRight:`1px solid ${isActive?"#1e3a7c":"#e2e8f0"}`,background:isActive&&sortDir==="asc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="asc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="asc"?700:400,cursor:"pointer"}}>{s.l} â†‘</button>
-              <button onClick={()=>setSort(s.k,"desc")} style={{padding:"3px 7px",border:"none",background:isActive&&sortDir==="desc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="desc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="desc"?700:400,cursor:"pointer"}}>â†“</button>
+              <button onClick={()=>setSort(s.k,"asc")} style={{padding:"3px 7px",border:"none",borderRight:`1px solid ${isActive?"#1e3a7c":"#e2e8f0"}`,background:isActive&&sortDir==="asc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="asc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="asc"?700:400,cursor:"pointer"}}>{s.l} ↑</button>
+              <button onClick={()=>setSort(s.k,"desc")} style={{padding:"3px 7px",border:"none",background:isActive&&sortDir==="desc"?"#0f2557":isActive?"#e8eef8":"#fff",color:isActive&&sortDir==="desc"?"#fff":"#64748b",fontSize:9,fontWeight:isActive&&sortDir==="desc"?700:400,cursor:"pointer"}}>↓</button>
             </div>;
           })}
         </div>
@@ -2532,11 +2532,11 @@ function App(){
       />
     </Modal>}
 
-    {/* â”€â”€ FLOATING TOAST NOTIFICATIONS â”€â”€ */}
+    {/* ── FLOATING TOAST NOTIFICATIONS ── */}
     <div style={{position:"fixed",top:70,right:16,zIndex:3000,display:"flex",flexDirection:"column",gap:10,maxWidth:340,pointerEvents:"none"}}>
       {toasts.map(toast=>(
         <div key={toast.id} style={{background:toast.urgent?"#fff5f5":"#fff",borderRadius:12,boxShadow:"0 8px 32px rgba(10,20,60,0.28)",border:`1.5px solid ${toast.urgent?"#fca5a5":"#e2e8f0"}`,overflow:"hidden",animation:"slideInRight 0.35s cubic-bezier(.22,.68,0,1.2)",pointerEvents:"all"}}>
-          {/* Header â€” clickable to go to task+tab */}
+          {/* Header — clickable to go to task+tab */}
           <div
             onClick={()=>{
               setToasts(prev=>prev.filter(t=>t.id!==toast.id));
@@ -2546,18 +2546,18 @@ function App(){
             style={{background:toast.urgent?"linear-gradient(135deg,#dc2626,#b91c1c)":"linear-gradient(135deg,#0f2557,#1e40af)",padding:"9px 12px",display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}}
           >
             <div style={{display:"flex",alignItems:"center",gap:7}}>
-              <span style={{fontSize:15}}>{toast.urgent?"ğŸš¨":toast.type==="message"?"ğŸ’¬":"ğŸ“Œ"}</span>
+              <span style={{fontSize:15}}>{toast.urgent?"🚨":toast.type==="message"?"💬":"📌"}</span>
               <div>
-                <div style={{fontSize:11,fontWeight:800,color:"#fff",lineHeight:1.2}}>{toast.urgent?"ğŸš¨ URGENT â€” ":""}{toast.type==="message"?"New Chat Message":"New Update Posted"}</div>
-                <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",marginTop:1}}>Tap to open â†’ {toast.type==="message"?"Chat":"Updates"} tab</div>
+                <div style={{fontSize:11,fontWeight:800,color:"#fff",lineHeight:1.2}}>{toast.urgent?"🚨 URGENT — ":""}{toast.type==="message"?"New Chat Message":"New Update Posted"}</div>
+                <div style={{fontSize:9,color:"rgba(255,255,255,0.7)",marginTop:1}}>Tap to open → {toast.type==="message"?"Chat":"Updates"} tab</div>
               </div>
             </div>
             <button
               onClick={e=>{e.stopPropagation();setToasts(prev=>prev.filter(t=>t.id!==toast.id));}}
               style={{background:"rgba(255,255,255,0.2)",border:"none",borderRadius:4,color:"#fff",fontSize:12,cursor:"pointer",padding:"3px 7px",lineHeight:1,flexShrink:0}}
-            >âœ•</button>
+            >✕</button>
           </div>
-          {/* Body â€” also clickable */}
+          {/* Body — also clickable */}
           <div
             onClick={()=>{
               setToasts(prev=>prev.filter(t=>t.id!==toast.id));
@@ -2575,15 +2575,15 @@ function App(){
               <div style={{fontSize:12,fontWeight:800,color:"#0f2557"}}>{toast.authorName}</div>
             </div>
             {toast.taskRef&&<div style={{fontSize:10,color:"#c9a227",fontWeight:700,marginBottom:3}}>
-              {toast.taskRef}<span style={{color:"#94a3b8",fontWeight:400,marginLeft:4}}>Â· {toast.taskName.slice(0,35)}{toast.taskName.length>35?"â€¦":""}</span>
+              {toast.taskRef}<span style={{color:"#94a3b8",fontWeight:400,marginLeft:4}}>· {toast.taskName.slice(0,35)}{toast.taskName.length>35?"…":""}</span>
             </div>}
             {toast.text&&<div style={{fontSize:12,color:"#374151",lineHeight:1.45,marginBottom:4,background:"#f8fafc",borderRadius:6,padding:"5px 8px",borderLeft:"3px solid #0f2557"}}>
-              {toast.text.slice(0,100)}{toast.text.length>100?"â€¦":""}
+              {toast.text.slice(0,100)}{toast.text.length>100?"…":""}
             </div>}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
               <div style={{fontSize:9,color:"#94a3b8"}}>{fmtDT(toast.timestamp)}</div>
               <div style={{fontSize:9,color:toast.type==="message"?"#1e40af":"#166534",fontWeight:700,background:toast.type==="message"?"#dbeafe":"#dcfce7",borderRadius:4,padding:"2px 6px"}}>
-                {toast.type==="message"?"â†’ Reply in Chat":"â†’ View Updates"}
+                {toast.type==="message"?"→ Reply in Chat":"→ View Updates"}
               </div>
             </div>
           </div>
@@ -2599,10 +2599,9 @@ function App(){
     `}</style>
 
     <div style={{textAlign:"center",padding:"14px 0 22px",fontSize:10,color:"#94a3b8"}}>
-      TKJ Project Management Sdn Bhd (1676211-U) Â· {new Date().toLocaleDateString("en-MY",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})} Â· {currentUser.name} {myMoodObj?myMoodObj.emoji:""} Â· â˜ï¸ Cloud Sync
+      TKJ Project Management Sdn Bhd (1676211-U) · {new Date().toLocaleDateString("en-MY",{weekday:"long",day:"2-digit",month:"long",year:"numeric"})} · {currentUser.name} {myMoodObj?myMoodObj.emoji:""} · ☁️ Cloud Sync
     </div>
   </div>;
 }
 
 export default App
-
